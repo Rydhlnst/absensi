@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import AppSidebar from "@/components/layout/sidebar"
-import Header from "@/components/layout/header"
 import MobileNav from "@/components/layout/mobile-nav"
 import { Toaster } from "sonner"
 import { authClient } from "@/lib/auth-client"
@@ -73,14 +72,20 @@ export default function DashboardLayout({
 
   return (
     <TooltipProvider>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={true}>
         <AppSidebar role={role} user={user} />
-        <div className="flex-1 flex flex-col w-full min-h-screen overflow-hidden">
-          <Header user={user} />
-          <main className="flex-1 overflow-auto p-3 pb-20 sm:p-4 sm:pb-4 md:p-6 md:pb-6">
+
+        <div className="flex flex-col flex-1 min-h-screen">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur px-4">
+            <SidebarTrigger />
+            <div className="flex-1" />
+          </header>
+
+          <main className="flex-1 p-3 pb-20 sm:p-4 sm:pb-4 md:p-6 md:pb-6">
             {children}
           </main>
         </div>
+
         <MobileNav role={role} />
       </SidebarProvider>
       <Toaster position="top-right" richColors />
