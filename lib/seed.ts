@@ -48,7 +48,7 @@ async function seed() {
       },
     });
     if (employee.user) {
-      await db.update(user).set({ role: "user" }).where(eq(user.id, employee.user.id));
+      await db.update(user).set({ role: "employee" }).where(eq(user.id, employee.user.id));
       console.log("Employee created:", employee.user.email);
     }
   } catch (e: any) {
