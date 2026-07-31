@@ -27,6 +27,17 @@ const demoAccounts = [
   { label: "Employee", email: "budi.santoso@mitrasolusindo.co.id", password: "password123" },
 ]
 
+function getRedirectPath(role: string): string {
+  switch (role) {
+    case "super_admin":
+      return "/super-admin/dashboard"
+    case "admin":
+      return "/admin/dashboard"
+    default:
+      return "/employee/dashboard"
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
@@ -35,39 +46,35 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSignIn = async (signInEmail: string, signInPassword: string) => {
     setLoading(true)
     setError("")
 
-    const { error: signInError } = await authClient.signIn.email({
-      email,
-      password,
-      callbackURL: `${window.location.origin}/admin/dashboard`,
+    const { data, error: signInError } = await authClient.signIn.email({
+      email: signInEmail,
+      password: signInPassword,
     })
 
     if (signInError) {
       setError(signInError.message || "Email atau password salah")
       setLoading(false)
+      return
     }
+
+    const session = await authClient.getSession()
+    const role = (session.data?.user as any)?.role || "user"
+    router.push(getRedirectPath(role))
   }
 
-  const handleDemoLogin = async (demo: (typeof demoAccounts)[number]) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    handleSignIn(email, password)
+  }
+
+  const handleDemoLogin = (demo: (typeof demoAccounts)[number]) => {
     setEmail(demo.email)
     setPassword(demo.password)
-    setLoading(true)
-    setError("")
-
-    const { error: signInError } = await authClient.signIn.email({
-      email: demo.email,
-      password: demo.password,
-      callbackURL: `${window.location.origin}/admin/dashboard`,
-    })
-
-    if (signInError) {
-      setError(signInError.message || "Email atau password salah")
-      setLoading(false)
-    }
+    handleSignIn(demo.email, demo.password)
   }
 
   return (

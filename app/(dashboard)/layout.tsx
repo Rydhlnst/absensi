@@ -74,9 +74,9 @@ export default function DashboardLayout({
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar role={role} user={user} />
-        <div className="flex-1 flex flex-col min-h-screen">
+        <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
           <Header user={user} />
-          <main className="flex-1 p-4 md:p-6">
+          <main className="flex-1 overflow-auto p-4 md:p-6">
             {children}
           </main>
         </div>

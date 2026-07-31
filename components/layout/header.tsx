@@ -17,7 +17,6 @@ import {
 import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -41,6 +40,7 @@ export default function Header({ user }: HeaderProps) {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [mounted, setMounted] = useState(false)
 
   const handleLogout = async () => {
     await authClient.signOut({
@@ -51,7 +51,6 @@ export default function Header({ user }: HeaderProps) {
       },
     })
   }
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -70,49 +69,39 @@ export default function Header({ user }: HeaderProps) {
     .toUpperCase()
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 transition-[width,height]">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 gap-2">
+      <SidebarTrigger className="-ml-1 shrink-0" />
+      <Separator orientation="vertical" className="h-4 shrink-0" />
 
-      <div className="relative flex-1 max-w-sm">
+      <div className="relative flex-1 min-w-0 max-w-xs hidden sm:block">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
+        <input
           placeholder="Cari..."
-          className="pl-9 h-9 bg-muted/50"
+          className="h-9 w-full rounded-md border bg-muted/50 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
 
-      <div className="flex items-center gap-1 ml-auto">
-        <div className="hidden md:flex flex-col items-end mr-2">
-          <span className="text-sm font-medium">{formattedDate}</span>
-          <span className="text-xs text-muted-foreground tabular-nums">{mounted ? formattedTime : ""}</span>
+      <div className="flex items-center gap-1 ml-auto shrink-0">
+        <div className="hidden lg:flex items-center gap-2 mr-2">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">{formattedDate}</span>
+          <Separator orientation="vertical" className="h-4" />
+          <span className="text-sm font-mono font-medium tabular-nums whitespace-nowrap">{mounted ? formattedTime : "--:--:--"}</span>
         </div>
-
-        <Separator orientation="vertical" className="hidden md:block mr-1 h-4" />
 
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="icon"
+          className="size-9"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Toggle dark mode"
         >
-          {mounted && theme === "dark" ? (
-            <Sun className="size-4" />
-          ) : (
-            <Moon className="size-4" />
-          )}
+          {mounted && theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="relative">
+            <Button variant="ghost" size="icon" className="relative size-9">
               <Bell className="size-4" />
-              <Badge
-                variant="destructive"
-                className="absolute -top-1 -right-1 size-4 p-0 flex items-center justify-center text-[10px] rounded-full"
-              >
-                5
-              </Badge>
+              <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 size-4 p-0 flex items-center justify-center text-[9px] rounded-full">5</Badge>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
@@ -143,20 +132,6 @@ export default function Header({ user }: HeaderProps) {
                   <span className="text-[10px] text-muted-foreground">1 hari lalu</span>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col gap-1 w-full">
-                  <span className="text-sm font-medium">Reminder Tugas</span>
-                  <span className="text-xs text-muted-foreground line-clamp-1">Tugas maintenance genset akan jatuh tempo besok</span>
-                  <span className="text-[10px] text-muted-foreground">1 hari lalu</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col gap-1 w-full">
-                  <span className="text-sm font-medium">Sistem Update</span>
-                  <span className="text-xs text-muted-foreground line-clamp-1">Sistem akan mengalami pemeliharaan pada 25 Juli 2026</span>
-                  <span className="text-[10px] text-muted-foreground">2 hari lalu</span>
-                </div>
-              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="justify-center text-xs text-primary">
@@ -167,14 +142,14 @@ export default function Header({ user }: HeaderProps) {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2">
+            <Button variant="ghost" size="sm" className="gap-2 h-9 px-2">
               <Avatar size="sm">
                 <AvatarImage src={user.avatar ?? undefined} alt={user.name} />
                 <AvatarFallback>{userInitials}</AvatarFallback>
               </Avatar>
               <div className="hidden md:flex flex-col items-start">
                 <span className="text-sm font-medium leading-none">{user.name}</span>
-                <span className="text-xs text-muted-foreground leading-none mt-1">{user.position}</span>
+                <span className="text-xs text-muted-foreground leading-none mt-1">{user.role === "super_admin" ? "Super Admin" : user.role === "admin" ? "Admin" : user.position}</span>
               </div>
               <ChevronDown className="size-4 text-muted-foreground" />
             </Button>
