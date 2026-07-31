@@ -43,7 +43,7 @@ export default function LoginPage() {
     const { error: signInError } = await authClient.signIn.email({
       email,
       password,
-      callbackURL: "/admin/dashboard",
+      callbackURL: `${window.location.origin}/admin/dashboard`,
     })
 
     if (signInError) {
@@ -61,7 +61,7 @@ export default function LoginPage() {
     const { error: signInError } = await authClient.signIn.email({
       email: demo.email,
       password: demo.password,
-      callbackURL: "/admin/dashboard",
+      callbackURL: `${window.location.origin}/admin/dashboard`,
     })
 
     if (signInError) {
