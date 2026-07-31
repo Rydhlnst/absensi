@@ -8,8 +8,6 @@ import {
   Shield,
   UserCheck,
   HeartPulse,
-  TrendingUp,
-  TrendingDown,
   Settings,
   ClipboardList,
   Activity,
@@ -69,38 +67,10 @@ const COLORS = {
 }
 
 const statConfig = [
-  {
-    key: "totalUsers",
-    label: "Total Users",
-    icon: Users,
-    color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-    change: "+3%",
-    up: true,
-  },
-  {
-    key: "totalAdmins",
-    label: "Total Admin",
-    icon: Shield,
-    color: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
-    change: "+1",
-    up: true,
-  },
-  {
-    key: "totalEmployees",
-    label: "Total Karyawan",
-    icon: UserCheck,
-    color: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
-    change: "+2%",
-    up: true,
-  },
-  {
-    key: "systemHealth",
-    label: "System Health",
-    icon: HeartPulse,
-    color: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400",
-    change: "98.5%",
-    up: true,
-  },
+  { key: "totalUsers", label: "Total Users", icon: Users, color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400", format: "number" as const },
+  { key: "totalAdmins", label: "Total Admin", icon: Shield, color: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400", format: "number" as const },
+  { key: "totalEmployees", label: "Total Karyawan", icon: UserCheck, color: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400", format: "number" as const },
+  { key: "systemHealth", label: "System Health", icon: HeartPulse, color: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400", format: "percent" as const },
 ]
 
 export default function SuperAdminDashboardPage() {
@@ -214,27 +184,11 @@ export default function SuperAdminDashboardPage() {
                     >
                       <Icon className="size-5" />
                     </div>
-                    <div
-                      className={`flex items-center gap-1 text-xs font-medium ${
-                        stat.up ? "text-green-600" : "text-red-600"
-                      }`}
-                    >
-                      {stat.up ? (
-                        <TrendingUp className="size-3" />
-                      ) : (
-                        <TrendingDown className="size-3" />
-                      )}
-                      {stat.change}
-                    </div>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">{stat.label}</p>
                     <p className="text-2xl font-bold">
-                      {typeof value === "number"
-                        ? value >= 100
-                          ? value.toLocaleString("id-ID")
-                          : `${value}%`
-                        : value}
+                      {stat.format === "percent" ? `${value}%` : value.toLocaleString("id-ID")}
                     </p>
                   </div>
                 </CardContent>
