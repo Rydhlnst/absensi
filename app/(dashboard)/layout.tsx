@@ -6,13 +6,14 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import AppSidebar from "@/components/layout/sidebar"
 import Header from "@/components/layout/header"
+import MobileNav from "@/components/layout/mobile-nav"
 import { Toaster } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import type { Role, User } from "@/types"
 
 function LoadingScreen() {
   return (
-    <div className="flex h-screen items-center justify-center">
+    <div className="flex h-screen w-full items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="size-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         <p className="text-sm text-muted-foreground">Memuat...</p>
@@ -74,12 +75,13 @@ export default function DashboardLayout({
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar role={role} user={user} />
-        <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+        <div className="flex-1 flex flex-col w-full min-h-screen overflow-hidden">
           <Header user={user} />
-          <main className="flex-1 overflow-auto p-4 md:p-6">
+          <main className="flex-1 overflow-auto p-3 pb-20 sm:p-4 sm:pb-4 md:p-6 md:pb-6">
             {children}
           </main>
         </div>
+        <MobileNav role={role} />
       </SidebarProvider>
       <Toaster position="top-right" richColors />
     </TooltipProvider>
