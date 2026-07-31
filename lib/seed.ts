@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { auth } from "./auth";
 import { db } from "./db";
 import { user } from "./schema";
