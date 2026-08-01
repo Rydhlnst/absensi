@@ -118,7 +118,7 @@ export default function DashboardLayout({
       <SidebarProvider defaultOpen={true}>
         <AppSidebar role={role} user={user} />
 
-        <div className="flex flex-col flex-1 min-h-screen">
+        <div className="flex flex-col flex-1 min-h-screen overflow-x-hidden">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur px-4">
             <SidebarTrigger />
 
@@ -178,7 +178,7 @@ export default function DashboardLayout({
             </DropdownMenu>
           </header>
 
-          <main className="flex-1 p-3 pb-20 sm:p-4 sm:pb-4 md:p-6 md:pb-6">
+          <main className="flex-1 overflow-x-hidden p-3 pb-20 sm:p-4 sm:pb-4 md:p-6 md:pb-6">
             {children}
           </main>
         </div>
