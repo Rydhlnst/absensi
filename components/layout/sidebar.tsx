@@ -147,7 +147,7 @@ function AppSidebar({ role, user }: AppSidebarProps) {
             <Building2 className="size-4" />
           </div>
           <div className="flex min-w-0 flex-col overflow-hidden">
-            <span className="truncate text-sm font-semibold leading-tight">AbsenPro</span>
+            <span className="truncate text-sm font-semibold leading-tight">Absensi</span>
             <span className="truncate text-xs text-muted-foreground">Field Management</span>
           </div>
         </div>

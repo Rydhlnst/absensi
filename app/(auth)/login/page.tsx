@@ -87,7 +87,7 @@ export default function LoginPage() {
               <div className="size-12 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center">
                 <Fingerprint className="size-7" />
               </div>
-              <span className="text-3xl font-bold tracking-tight">AbsenPro</span>
+              <span className="text-3xl font-bold tracking-tight">Absensi</span>
             </div>
             <p className="text-blue-100 text-lg">
               Sistem Manajemen Absensi & Tugas Lapangan
@@ -138,7 +138,7 @@ export default function LoginPage() {
             <div className="size-10 rounded-2xl bg-primary/10 flex items-center justify-center">
               <Fingerprint className="size-5 text-primary" />
             </div>
-            <span className="text-2xl font-bold tracking-tight">AbsenPro</span>
+            <span className="text-2xl font-bold tracking-tight">Absensi</span>
           </div>
 
           <div className="space-y-1">

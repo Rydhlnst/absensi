@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AbsenPro - Sistem Manajemen Absensi",
+  title: "Absensi - Sistem Manajemen Absensi",
   description: "Sistem manajemen absensi digital yang modern dan efisien untuk perusahaan Anda",
 };
 

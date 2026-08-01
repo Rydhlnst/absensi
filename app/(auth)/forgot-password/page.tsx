@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
           <div className="size-10 rounded-2xl bg-primary/10 flex items-center justify-center">
             <Fingerprint className="size-5 text-primary" />
           </div>
-          <span className="text-2xl font-bold tracking-tight">AbsenPro</span>
+          <span className="text-2xl font-bold tracking-tight">Absensi</span>
         </div>
 
         <Card>
