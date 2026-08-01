@@ -41,6 +41,7 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { getAvatarUrl } from "@/lib/utils"
 
 interface AppSidebarProps {
   role: Role
@@ -163,7 +164,7 @@ function AppSidebar({ role, user }: AppSidebarProps) {
       <SidebarFooter>
         <div className="flex items-center gap-2 px-2 py-2">
           <Avatar size="lg">
-            <AvatarImage src={user.avatar ?? undefined} alt={user.name} />
+            <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
             <AvatarFallback>
               {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
             </AvatarFallback>

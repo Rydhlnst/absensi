@@ -23,6 +23,7 @@ import AppSidebar from "@/components/layout/sidebar"
 import MobileNav from "@/components/layout/mobile-nav"
 import { Toaster } from "sonner"
 import { authClient, signOut } from "@/lib/auth-client"
+import { getAvatarUrl } from "@/lib/utils"
 import type { Role, User } from "@/types"
 
 function LoadingScreen() {
@@ -154,7 +155,7 @@ export default function DashboardLayout({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 px-2 h-9">
                   <Avatar size="sm">
-                    {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
+                    <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <div className="hidden lg:flex flex-col items-start text-left">
