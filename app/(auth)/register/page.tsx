@@ -4,7 +4,9 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
+  User,
   Mail,
+  Phone,
   Lock,
   Eye,
   EyeOff,
@@ -18,63 +20,57 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import { authClient } from "@/lib/auth-client"
 
-const demoAccounts = [
-  { label: "Super Admin", email: "ahmad.pratama@mitrasolusindo.co.id", password: "password123" },
-  { label: "Admin", email: "siti.nurhaliza@mitrasolusindo.co.id", password: "password123" },
-  { label: "Employee", email: "budi.santoso@mitrasolusindo.co.id", password: "password123" },
-]
-
-function getRedirectPath(role: string): string {
-  switch (role) {
-    case "super_admin":
-      return "/super-admin/dashboard"
-    case "admin":
-      return "/admin/dashboard"
-    default:
-      return "/employee/dashboard"
-  }
-}
-
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter()
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const handleSignIn = async (signInEmail: string, signInPassword: string) => {
-    setLoading(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError("")
 
-    const { data, error: signInError } = await authClient.signIn.email({
-      email: signInEmail,
-      password: signInPassword,
+    if (password.length < 8) {
+      setError("Password minimal 8 karakter")
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError("Konfirmasi password tidak cocok")
+      return
+    }
+
+    setLoading(true)
+
+    const { error: signUpError } = await authClient.signUp.email({
+      name,
+      email,
+      password,
     })
 
-    if (signInError) {
-      setError(signInError.message || "Email atau password salah")
+    if (signUpError) {
+      setError(signUpError.message || "Gagal mendaftar. Silakan coba lagi.")
       setLoading(false)
       return
     }
 
     const session = await authClient.getSession()
     const role = (session.data?.user as any)?.role || "employee"
-    router.push(getRedirectPath(role))
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    handleSignIn(email, password)
-  }
-
-  const handleDemoLogin = (demo: (typeof demoAccounts)[number]) => {
-    setEmail(demo.email)
-    setPassword(demo.password)
-    handleSignIn(demo.email, demo.password)
+    if (role === "super_admin") {
+      router.push("/super-admin/dashboard")
+    } else if (role === "admin") {
+      router.push("/admin/dashboard")
+    } else {
+      router.push("/employee/dashboard")
+    }
   }
 
   return (
@@ -142,9 +138,9 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight">Masuk ke Akun Anda</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Daftar Akun Baru</h1>
             <p className="text-muted-foreground text-sm">
-              Selamat datang! Silakan masukkan kredensial Anda.
+              Buat akun untuk mulai menggunakan sistem.
             </p>
           </div>
 
@@ -155,6 +151,23 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nama Lengkap</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Masukkan nama lengkap"
+                  className="pl-10"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={loading}
+                  required
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -173,21 +186,30 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-primary hover:underline"
-                >
-                  Lupa Password?
-                </Link>
+              <Label htmlFor="phone">No. Telepon</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+6281234567890"
+                  className="pl-10"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={loading}
+                  required
+                />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Masukkan password"
+                  placeholder="Minimal 8 karakter"
                   className="pl-10 pr-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -208,6 +230,34 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Ulangi password"
+                  className="pl-10 pr-10"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={loading}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
             <Button type="submit" className="w-full h-10" disabled={loading}>
               {loading ? (
                 <>
@@ -215,34 +265,17 @@ export default function LoginPage() {
                   Memproses...
                 </>
               ) : (
-                "Masuk"
+                "Daftar"
               )}
             </Button>
           </form>
 
-          <div className="space-y-4">
-            <div className="relative">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-                Demo Quick Login
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {demoAccounts.map((demo) => (
-                <Button
-                  key={demo.email}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDemoLogin(demo)}
-                  disabled={loading}
-                  className="text-xs"
-                >
-                  {demo.label}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <p className="text-center text-sm text-muted-foreground">
+            Sudah punya akun?{" "}
+            <Link href="/login" className="text-primary hover:underline font-medium">
+              Masuk
+            </Link>
+          </p>
         </div>
       </div>
     </div>
