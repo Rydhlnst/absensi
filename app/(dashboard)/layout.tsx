@@ -166,11 +166,11 @@ export default function DashboardLayout({
       <SidebarProvider defaultOpen={true}>
         <AppSidebar role={role} user={user} />
 
-        <div className="flex flex-col flex-1 min-h-screen overflow-x-hidden">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur px-4">
-            <SidebarTrigger />
+        <div className="flex flex-col flex-1 min-h-screen w-0">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur px-4 shrink-0">
+            <SidebarTrigger className="shrink-0" />
 
-            <div className="hidden md:flex flex-1 max-w-sm">
+            <div className="hidden md:flex flex-1 min-w-0 max-w-sm">
               <div className="relative w-full">
                 <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -181,27 +181,29 @@ export default function DashboardLayout({
               </div>
             </div>
 
-            <div className="flex-1" />
+            <div className="flex-1 min-w-0" />
 
-            <LiveClock />
+            <div className="hidden md:block shrink-0">
+              <LiveClock />
+            </div>
 
             <Button
               variant="ghost"
               size="icon"
-              className="size-9"
+              className="size-9 shrink-0"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             >
               {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </Button>
 
-            <Button variant="ghost" size="icon" className="size-9 relative">
+            <Button variant="ghost" size="icon" className="size-9 relative shrink-0">
               <Bell className="size-4" />
               <Badge className="absolute -top-1 -right-1 size-4 p-0 text-[10px] flex items-center justify-center rounded-full">3</Badge>
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2 px-2 h-9">
+                <Button variant="ghost" className="gap-2 px-2 h-9 shrink-0">
                   <Avatar size="sm">
                     <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
                     <AvatarFallback>{initials}</AvatarFallback>
@@ -228,7 +230,7 @@ export default function DashboardLayout({
 
           <TimeSimulationBar />
 
-          <main className="flex-1 overflow-x-hidden p-3 pb-20 sm:p-4 sm:pb-4 md:p-6 md:pb-6">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 pb-20 sm:p-4 sm:pb-4 md:p-6 md:pb-6 min-w-0">
             {children}
           </main>
         </div>
