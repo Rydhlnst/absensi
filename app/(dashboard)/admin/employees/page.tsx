@@ -2,37 +2,25 @@
 
 import { useState, useMemo } from "react"
 import {
-  Search,
-  Users,
-  Mail,
-  Phone,
-  Building2,
-  Briefcase,
-  ChevronLeft,
-  ChevronRight,
   Plus,
   Pencil,
   Trash2,
   Loader2,
   User,
+  Mail,
+  Phone,
+  Building2,
+  Briefcase,
   Lock,
   DollarSign,
-  Smartphone,
   Minus,
+  Smartphone,
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Dialog,
   DialogContent,
@@ -53,8 +41,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { employees } from "@/data/mock"
 import { authClient } from "@/lib/auth-client"
-
-const ITEMS_PER_PAGE = 10
+import { getAvatarUrl } from "@/lib/utils"
 
 interface EmployeeForm {
   name: string
@@ -112,9 +99,12 @@ const mockDeviceIds: Record<string, string> = {
   "emp-030": "device-mob-1b5e",
 }
 
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+}
+
 export default function AdminEmployeesPage() {
   const [search, setSearch] = useState("")
-  const [page, setPage] = useState(1)
   const [employeeList, setEmployeeList] = useState(employees)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -125,9 +115,7 @@ export default function AdminEmployeesPage() {
   const [formError, setFormError] = useState("")
   const [pointsMap, setPointsMap] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {}
-    employees.forEach((e) => {
-      map[e.id] = e.rewardPoints
-    })
+    employees.forEach((e) => { map[e.id] = e.rewardPoints })
     return map
   })
 
@@ -136,16 +124,10 @@ export default function AdminEmployeesPage() {
       (e) =>
         e.role !== "super_admin" &&
         (e.name.toLowerCase().includes(search.toLowerCase()) ||
-          e.email.toLowerCase().includes(search.toLowerCase()) ||
-          e.department.toLowerCase().includes(search.toLowerCase()))
+          e.department.toLowerCase().includes(search.toLowerCase()) ||
+          e.position.toLowerCase().includes(search.toLowerCase()))
     )
   }, [search, employeeList])
-
-  const totalPages = Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE)
-  const paginatedEmployees = filteredEmployees.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE
-  )
 
   const openCreateDialog = () => {
     setEditingId(null)
@@ -181,26 +163,16 @@ export default function AdminEmployeesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError("")
-
     if (!editingId && form.password.length < 8) {
       setFormError("Password minimal 8 karakter")
       return
     }
-
     setFormLoading(true)
-
     if (editingId) {
       setEmployeeList((prev) =>
         prev.map((emp) =>
           emp.id === editingId
-            ? {
-                ...emp,
-                name: form.name,
-                email: form.email,
-                phone: form.phone,
-                department: form.department,
-                position: form.position,
-              }
+            ? { ...emp, name: form.name, email: form.email, phone: form.phone, department: form.department, position: form.position }
             : emp
         )
       )
@@ -211,13 +183,11 @@ export default function AdminEmployeesPage() {
         email: form.email,
         password: form.password,
       })
-
       if (signUpError) {
         setFormError(signUpError.message || "Gagal membuat akun karyawan.")
         setFormLoading(false)
         return
       }
-
       const newId = `emp-${String(employeeList.length + 1).padStart(3, "0")}`
       setEmployeeList((prev) => [
         ...prev,
@@ -243,7 +213,6 @@ export default function AdminEmployeesPage() {
       ])
       setDialogOpen(false)
     }
-
     setFormLoading(false)
   }
 
@@ -256,359 +225,213 @@ export default function AdminEmployeesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Manajemen Karyawan</h1>
-          <p className="text-muted-foreground">
-            Kelola data karyawan perusahaan
-          </p>
-        </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="mr-2 size-4" />
-          Tambah Karyawan
-        </Button>
+    <div className="space-y-3">
+      {/* Search */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Cari nama, posisi..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Daftar Karyawan
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Cari nama, email, departemen..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setPage(1)
-                }}
-                className="pl-9"
-              />
-            </div>
-          </div>
+      {/* Tambah Teknisi button */}
+      <button
+        onClick={openCreateDialog}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white shadow-sm"
+      >
+        <svg viewBox="0 0 24 24" fill="none" className="size-5" stroke="currentColor" strokeWidth={2}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <line x1="19" y1="8" x2="19" y2="14" />
+          <line x1="22" y1="11" x2="16" y2="11" />
+        </svg>
+        Tambah Teknisi
+      </button>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Posisi</TableHead>
-                  <TableHead className="text-right">Tarif/Jam</TableHead>
-                  <TableHead>Device ID</TableHead>
-                  <TableHead className="text-center">Poin</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[140px]">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedEmployees.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      Tidak ada data ditemukan.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedEmployees.map((emp) => (
-                    <TableRow key={emp.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <p>{emp.name}</p>
-                          <p className="text-xs text-muted-foreground">{emp.department}</p>
+      {/* Employee cards */}
+      <div className="space-y-3">
+        {filteredEmployees.length === 0 ? (
+          <div className="rounded-2xl bg-white p-8 text-center text-gray-400 text-sm shadow-sm border border-gray-100">
+            Tidak ada data ditemukan
+          </div>
+        ) : (
+          filteredEmployees.map((emp) => {
+            const hourlyRate = mockHourlyRates[emp.id] || 0
+            const deviceId = mockDeviceIds[emp.id]
+            const pts = pointsMap[emp.id] || 0
+
+            return (
+              <div key={emp.id} className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4">
+                  <div className="flex gap-4">
+                    {/* Avatar + name */}
+                    <div className="flex flex-col items-center gap-2 shrink-0">
+                      <Avatar size="lg" className="!size-16">
+                        <AvatarImage src={emp.avatar || getAvatarUrl(emp.name)} alt={emp.name} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
+                          {getInitials(emp.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="text-xs font-bold text-gray-900 uppercase text-center leading-tight">
+                        {emp.name.split(" ")[0]}
+                      </p>
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Tarif / Jam</p>
+                        <p className="text-base font-bold text-gray-900">
+                          {hourlyRate > 0 ? `Rp ${hourlyRate.toLocaleString("id-ID")}` : "Rp -"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Total Poin</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-600">🏅</span>
+                          <span className="text-sm font-bold text-gray-900">{pts} Poin</span>
+                          <button
+                            onClick={() => setPointsMap((prev) => ({ ...prev, [emp.id]: Math.max(0, (prev[emp.id] || 0) - 10) }))}
+                            className="flex size-5 items-center justify-center rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-xs font-bold"
+                          >-</button>
+                          <button
+                            onClick={() => setPointsMap((prev) => ({ ...prev, [emp.id]: (prev[emp.id] || 0) + 10 }))}
+                            className="flex size-5 items-center justify-center rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-xs font-bold"
+                          >+</button>
                         </div>
-                      </TableCell>
-                      <TableCell>{emp.position}</TableCell>
-                      <TableCell className="text-right text-sm">
-                        {mockHourlyRates[emp.id]
-                          ? `Rp ${mockHourlyRates[emp.id].toLocaleString("id-ID")}/jam`
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {mockDeviceIds[emp.id] ? (
-                          <div className="flex items-center gap-1.5">
-                            <Smartphone className="size-3 text-muted-foreground" />
-                            <span className="text-xs font-mono">{mockDeviceIds[emp.id]}</span>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">No. Telp / WA</p>
+                        <p className="text-sm font-medium text-gray-900">{emp.phone || "-"}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Device ID Terikat</p>
+                        {deviceId ? (
+                          <div className="flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-green-500 shrink-0" />
+                            <span className="text-xs font-mono text-gray-700 truncate">{deviceId}</span>
+                            <button className="text-xs text-red-500 font-medium whitespace-nowrap hover:underline">
+                              Reset HP (Device ID)
+                            </button>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Belum terikat</span>
+                          <span className="text-xs text-gray-400">Belum terikat</span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() =>
-                              setPointsMap((prev) => ({
-                                ...prev,
-                                [emp.id]: Math.max(0, (prev[emp.id] || 0) - 10),
-                              }))
-                            }
-                          >
-                            <Minus className="size-3" />
-                          </Button>
-                          <span className="min-w-[32px] text-center text-sm font-medium">
-                            {pointsMap[emp.id] || 0}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() =>
-                              setPointsMap((prev) => ({
-                                ...prev,
-                                [emp.id]: (prev[emp.id] || 0) + 10,
-                              }))
-                            }
-                          >
-                            <Plus className="size-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            emp.status === "active" ? "default" : "secondary"
-                          }
-                        >
-                          {emp.status === "active" ? "Aktif" : "Nonaktif"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => openEditDialog(emp)}
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                          {mockDeviceIds[emp.id] && (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-destructive hover:text-destructive"
-                              title="Reset HP (Device ID)"
-                            >
-                              <Smartphone className="size-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => openDeleteDialog(emp.id)}
-                          >
-                            <Trash2 className="size-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">
-              Menampilkan {paginatedEmployees.length} dari{" "}
-              {filteredEmployees.length} karyawan
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm">
-                {page} / {totalPages || 1}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages || totalPages === 0}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                {/* Action buttons */}
+                <div className="grid grid-cols-2 border-t border-gray-100">
+                  <button
+                    onClick={() => openEditDialog(emp)}
+                    className="flex items-center justify-center gap-2 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-r border-gray-100"
+                  >
+                    <Pencil className="size-4" />
+                    Ubah
+                  </button>
+                  <button
+                    onClick={() => openDeleteDialog(emp.id)}
+                    className="flex items-center justify-center gap-2 py-3 text-sm font-medium text-red-500 hover:bg-red-50"
+                  >
+                    <Trash2 className="size-4" />
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
 
+      {/* Dialog Tambah/Edit */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Edit Karyawan" : "Tambah Karyawan"}
-            </DialogTitle>
+            <DialogTitle>{editingId ? "Edit Karyawan" : "Tambah Teknisi"}</DialogTitle>
             <DialogDescription>
-              {editingId
-                ? "Ubah data karyawan di bawah ini."
-                : "Isi data untuk membuat akun karyawan baru."}
+              {editingId ? "Ubah data karyawan." : "Isi data untuk membuat akun teknisi baru."}
             </DialogDescription>
           </DialogHeader>
 
           {formError && (
-            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-red-600 text-sm">
               {formError}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="emp-name">Nama Lengkap</Label>
+              <Label>Nama Lengkap</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input
-                  id="emp-name"
-                  placeholder="Masukkan nama"
-                  className="pl-10"
-                  value={form.name}
-                  onChange={(e) => handleFormChange("name", e.target.value)}
-                  disabled={formLoading}
-                  required
-                />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Input placeholder="Masukkan nama" className="pl-10" value={form.name}
+                  onChange={(e) => handleFormChange("name", e.target.value)} disabled={formLoading} required />
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="emp-email">Email</Label>
+              <Label>Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input
-                  id="emp-email"
-                  type="email"
-                  placeholder="nama@perusahaan.com"
-                  className="pl-10"
-                  value={form.email}
-                  onChange={(e) => handleFormChange("email", e.target.value)}
-                  disabled={formLoading}
-                  required
-                />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Input type="email" placeholder="email@perusahaan.com" className="pl-10" value={form.email}
+                  onChange={(e) => handleFormChange("email", e.target.value)} disabled={formLoading} required />
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="emp-phone">No. Telepon</Label>
+              <Label>No. Telepon</Label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input
-                  id="emp-phone"
-                  type="tel"
-                  placeholder="+6281234567890"
-                  className="pl-10"
-                  value={form.phone}
-                  onChange={(e) => handleFormChange("phone", e.target.value)}
-                  disabled={formLoading}
-                  required
-                />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Input type="tel" placeholder="+6281234567890" className="pl-10" value={form.phone}
+                  onChange={(e) => handleFormChange("phone", e.target.value)} disabled={formLoading} required />
               </div>
             </div>
-
             {!editingId && (
               <div className="space-y-2">
-                <Label htmlFor="emp-password">Password</Label>
+                <Label>Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                  <Input
-                    id="emp-password"
-                    type="password"
-                    placeholder="Minimal 8 karakter"
-                    className="pl-10"
-                    value={form.password}
-                    onChange={(e) =>
-                      handleFormChange("password", e.target.value)
-                    }
-                    disabled={formLoading}
-                    required
-                  />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                  <Input type="password" placeholder="Minimal 8 karakter" className="pl-10" value={form.password}
+                    onChange={(e) => handleFormChange("password", e.target.value)} disabled={formLoading} required />
                 </div>
               </div>
             )}
-
             <div className="space-y-2">
-              <Label htmlFor="emp-department">Departemen</Label>
+              <Label>Departemen</Label>
               <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input
-                  id="emp-department"
-                  placeholder="Contoh: HRD, Marketing"
-                  className="pl-10"
-                  value={form.department}
-                  onChange={(e) =>
-                    handleFormChange("department", e.target.value)
-                  }
-                  disabled={formLoading}
-                  required
-                />
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Input placeholder="Teknisi Lapangan" className="pl-10" value={form.department}
+                  onChange={(e) => handleFormChange("department", e.target.value)} disabled={formLoading} required />
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="emp-position">Posisi</Label>
+              <Label>Posisi</Label>
               <div className="relative">
-                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input
-                  id="emp-position"
-                  placeholder="Contoh: Staff, Manager"
-                  className="pl-10"
-                  value={form.position}
-                  onChange={(e) =>
-                    handleFormChange("position", e.target.value)
-                  }
-                  disabled={formLoading}
-                  required
-                />
+                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Input placeholder="Teknisi / Driver / Admin" className="pl-10" value={form.position}
+                  onChange={(e) => handleFormChange("position", e.target.value)} disabled={formLoading} required />
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="emp-hourlyRate">Tarif/Jam (Rp)</Label>
+              <Label>Tarif/Jam (Rp)</Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input
-                  id="emp-hourlyRate"
-                  type="number"
-                  placeholder="Contoh: 10000"
-                  className="pl-10"
-                  value={form.hourlyRate}
-                  onChange={(e) =>
-                    handleFormChange("hourlyRate", e.target.value)
-                  }
-                  disabled={formLoading}
-                  min={0}
-                />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Input type="number" placeholder="10000" className="pl-10" value={form.hourlyRate}
+                  onChange={(e) => handleFormChange("hourlyRate", e.target.value)} disabled={formLoading} min={0} />
               </div>
             </div>
-
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-                disabled={formLoading}
-              >
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={formLoading}>
                 Batal
               </Button>
               <Button type="submit" disabled={formLoading}>
-                {formLoading ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Menyimpan...
-                  </>
-                ) : editingId ? (
-                  "Simpan Perubahan"
-                ) : (
-                  "Buat Akun"
-                )}
+                {formLoading ? <><Loader2 className="mr-2 size-4 animate-spin" />Menyimpan...</> : editingId ? "Simpan" : "Buat Akun"}
               </Button>
             </DialogFooter>
           </form>
@@ -620,18 +443,12 @@ export default function AdminEmployeesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Karyawan?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini tidak dapat dibatalkan. Data karyawan akan dihapus
-              secara permanen dari sistem.
+              Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleDelete}
-            >
-              Hapus
-            </AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={handleDelete}>Hapus</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,27 +1,16 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { format } from "date-fns"
+import { id } from "date-fns/locale"
 import { attendance, employees } from "@/data/mock"
+import { authClient } from "@/lib/auth-client"
 import type { AttendanceStatus } from "@/types"
 
-const statusColor: Record<AttendanceStatus, string> = {
-  present: "bg-green-500/10 text-green-600 border-green-500/20",
-  late: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
-  absent: "bg-red-500/10 text-red-600 border-red-500/20",
-  leave: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  holiday: "bg-gray-500/10 text-gray-600 border-gray-500/20",
-}
+const monthNames = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+]
 
 const statusLabel: Record<AttendanceStatus, string> = {
   present: "Hadir",
@@ -31,198 +20,266 @@ const statusLabel: Record<AttendanceStatus, string> = {
   holiday: "Libur",
 }
 
-const currentEmployee = employees[2]
+const statusDotColor: Record<AttendanceStatus, string> = {
+  present: "bg-green-500",
+  late: "bg-yellow-500",
+  absent: "bg-red-500",
+  leave: "bg-blue-500",
+  holiday: "bg-gray-400",
+}
 
 function formatTime(isoStr: string | null): string {
-  if (!isoStr) return "-"
-  return new Date(isoStr).toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  if (!isoStr) return "--:--"
+  return new Date(isoStr).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
 }
 
-function formatDuration(minutes: number): string {
-  if (minutes <= 0) return "-"
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  if (hours === 0) return `${mins} menit`
-  if (mins === 0) return `${hours} jam`
-  return `${hours} jam ${mins} menit`
+function formatDurationShort(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `${h}j ${m}m`
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-function isInRange(dateStr: string, start: Date, end: Date): boolean {
-  const d = new Date(dateStr)
-  return d >= start && d <= end
-}
-
-function getDateRange(filter: string): { start: Date; end: Date } {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-  if (filter === "today") {
-    return { start: today, end: new Date(today.getTime() + 86400000 - 1) }
-  }
-
-  if (filter === "week") {
-    const dayOfWeek = today.getDay()
-    const monday = new Date(today)
-    monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7))
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    sunday.setHours(23, 59, 59, 999)
-    return { start: monday, end: sunday }
-  }
-
-  if (filter === "month") {
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-    return { start: firstDay, end: lastDay }
-  }
-
-  return { start: new Date("2020-01-01"), end: new Date("2099-12-31") }
-}
+type FilterType = "hari" | "bulan" | "tahun" | "rentang"
 
 export default function AttendanceHistoryPage() {
-  const [filter, setFilter] = useState("month")
-  const [customStart, setCustomStart] = useState("")
-  const [customEnd, setCustomEnd] = useState("")
+  const { data: session } = authClient.useSession()
+  const [filterType, setFilterType] = useState<FilterType>("bulan")
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedDay, setSelectedDay] = useState(format(new Date(), "yyyy-MM-dd"))
+  const [rangeStart, setRangeStart] = useState("")
+  const [rangeEnd, setRangeEnd] = useState("")
 
-  const filteredAttendance = useMemo(() => {
-    let range: { start: Date; end: Date }
+  const currentUserId = session?.user?.id || ""
+  const employee = employees.find((e) => e.id === currentUserId) || employees[2]
 
-    if (filter === "custom" && customStart && customEnd) {
-      range = {
-        start: new Date(customStart),
-        end: new Date(customEnd + "T23:59:59.999"),
-      }
-    } else {
-      range = getDateRange(filter)
+  const filteredRecords = useMemo(() => {
+    let records = attendance.filter((a) => a.employeeId === employee.id)
+
+    if (filterType === "hari") {
+      records = records.filter((a) => a.date === selectedDay)
+    } else if (filterType === "bulan") {
+      const prefix = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`
+      records = records.filter((a) => a.date.startsWith(prefix))
+    } else if (filterType === "tahun") {
+      records = records.filter((a) => a.date.startsWith(String(selectedYear)))
+    } else if (filterType === "rentang" && rangeStart && rangeEnd) {
+      records = records.filter((a) => a.date >= rangeStart && a.date <= rangeEnd)
     }
 
-    return attendance
-      .filter(
-        (a) =>
-          a.employeeId === currentEmployee.id &&
-          isInRange(a.date, range.start, range.end)
-      )
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [filter, customStart, customEnd])
+    return records.sort((a, b) => b.date.localeCompare(a.date))
+  }, [filterType, selectedMonth, selectedYear, selectedDay, rangeStart, rangeEnd, employee.id])
 
   const summary = useMemo(() => {
-    const present = filteredAttendance.filter(
-      (a) => a.status === "present" || a.status === "late"
-    )
+    const present = filteredRecords.filter((a) => a.status === "present" || a.status === "late")
+    const onTime = filteredRecords.filter((a) => a.status === "present").length
+    const late = filteredRecords.filter((a) => a.status === "late").length
     const totalMinutes = present.reduce((sum, a) => sum + a.workingDuration, 0)
-    const lateCount = filteredAttendance.filter((a) => a.status === "late").length
+    const totalSalary = present.reduce((sum, a) => {
+      const rate = employee.salary / 22 / 8 / 60
+      return sum + Math.round(a.workingDuration * rate)
+    }, 0)
     return {
       totalDays: present.length,
-      totalHours: formatDuration(totalMinutes),
-      lateCount,
+      totalMinutes,
+      totalSalary,
+      onTime,
+      late,
     }
-  }, [filteredAttendance])
+  }, [filteredRecords, employee.salary])
+
+  const filterLabel =
+    filterType === "bulan"
+      ? "BULANAN"
+      : filterType === "hari"
+        ? "HARIAN"
+        : filterType === "tahun"
+          ? "TAHUNAN"
+          : "RENTANG"
+
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
 
   return (
-    <div className="flex flex-col gap-4 pb-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Riwayat Absensi</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Tabs value={filter} onValueChange={setFilter}>
-            <TabsList className="w-full">
-              <TabsTrigger value="today">Hari Ini</TabsTrigger>
-              <TabsTrigger value="week">Minggu Ini</TabsTrigger>
-              <TabsTrigger value="month">Bulan Ini</TabsTrigger>
-              <TabsTrigger value="custom">Custom</TabsTrigger>
-            </TabsList>
+    <div className="p-4 space-y-4">
+      {/* Title */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-900">Riwayat &amp; Gaji</h1>
+        <span className="text-sm font-semibold text-gray-500">{filteredRecords.length} Log</span>
+      </div>
 
-            {filter === "custom" && (
-              <TabsContent value="custom">
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="date"
-                    value={customStart}
-                    onChange={(e) => setCustomStart(e.target.value)}
-                    className="flex h-9 rounded-xl border border-input bg-input/30 px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                  />
-                  <input
-                    type="date"
-                    value={customEnd}
-                    onChange={(e) => setCustomEnd(e.target.value)}
-                    className="flex h-9 rounded-xl border border-input bg-input/30 px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                  />
+      {/* Filter type tabs */}
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-3 space-y-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Tipe Filter</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          {(["hari", "bulan", "tahun", "rentang"] as FilterType[]).map((ft) => (
+            <button
+              key={ft}
+              onClick={() => setFilterType(ft)}
+              className={`rounded-lg py-2 text-sm font-semibold capitalize transition-colors ${
+                filterType === ft
+                  ? "bg-primary text-white"
+                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {ft.charAt(0).toUpperCase() + ft.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {filterType === "bulan" && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Pilih Bulan</label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {monthNames.map((m, i) => (
+                  <option key={i + 1} value={i + 1}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Pilih Tahun</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {filterType === "hari" && (
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Pilih Hari</label>
+            <input
+              type="date"
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        )}
+
+        {filterType === "tahun" && (
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Pilih Tahun</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        )}
+
+        {filterType === "rentang" && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Dari</label>
+              <input
+                type="date"
+                value={rangeStart}
+                onChange={(e) => setRangeStart(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Sampai</label>
+              <input
+                type="date"
+                value={rangeEnd}
+                onChange={(e) => setRangeEnd(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Summary card */}
+      <div className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: "#1e3a8a" }}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-white">Ringkasan Periode Ini</p>
+          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white uppercase">
+            {filterLabel}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs text-white/60">Total Gaji Diperoleh</p>
+            <p className="text-xl font-bold text-white">Rp {summary.totalSalary.toLocaleString("id-ID")}</p>
+          </div>
+          <div>
+            <p className="text-xs text-white/60">Total Waktu Kerja</p>
+            <p className="text-xl font-bold text-white">
+              {Math.floor(summary.totalMinutes / 60)}jam {summary.totalMinutes % 60}m
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 border-t border-white/20 pt-3">
+          <div className="text-center">
+            <p className="text-xs text-white/60">Hari Absen</p>
+            <p className="text-lg font-bold text-white">{summary.totalDays}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-white/60">Tepat Waktu</p>
+            <p className="text-lg font-bold text-green-300">{summary.onTime}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-white/60">Terlambat</p>
+            <p className="text-lg font-bold text-orange-300">{summary.late}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Log detail */}
+      <div>
+        <h2 className="text-sm font-bold text-gray-900 mb-3">Rincian Log Kehadiran</h2>
+        {filteredRecords.length === 0 ? (
+          <div className="rounded-2xl bg-white p-8 text-center text-gray-400 text-sm shadow-sm border border-gray-100">
+            Tidak ada riwayat absensi
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredRecords.map((rec) => (
+              <div key={rec.id} className="rounded-2xl bg-white shadow-sm border border-gray-100 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`size-2 rounded-full shrink-0 ${statusDotColor[rec.status]}`} />
+                    <span className="text-sm font-semibold text-gray-900">
+                      {format(new Date(rec.date), "EEEE, dd MMM yyyy", { locale: id })}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-gray-500">
+                    {statusLabel[rec.status]}
+                  </span>
                 </div>
-              </TabsContent>
-            )}
-          </Tabs>
-
-          <div className="rounded-xl border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Check In</TableHead>
-                  <TableHead>Check Out</TableHead>
-                  <TableHead>Durasi</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Lokasi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAttendance.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      Tidak ada data absensi
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredAttendance.map((att) => (
-                    <TableRow key={att.id}>
-                      <TableCell className="text-xs">{formatDate(att.date)}</TableCell>
-                      <TableCell className="text-xs">{formatTime(att.checkIn)}</TableCell>
-                      <TableCell className="text-xs">{formatTime(att.checkOut)}</TableCell>
-                      <TableCell className="text-xs">
-                        {formatDuration(att.workingDuration)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={`text-xs ${statusColor[att.status]}`}>
-                          {statusLabel[att.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[120px] truncate text-xs text-muted-foreground">
-                        {att.checkInLocation?.address ?? "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest">Masuk</p>
+                    <p className="text-sm font-bold text-gray-900">{formatTime(rec.checkIn)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest">Pulang</p>
+                    <p className="text-sm font-bold text-gray-900">{formatTime(rec.checkOut)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest">Durasi</p>
+                    <p className="text-sm font-bold text-primary">{formatDurationShort(rec.workingDuration)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-
-          <div className="flex flex-wrap gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Total Hadir:</span>
-              <span className="font-medium">{summary.totalDays} hari</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Total Jam:</span>
-              <span className="font-medium">{summary.totalHours}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Terlambat:</span>
-              <span className="font-medium">{summary.lateCount} kali</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   )
 }

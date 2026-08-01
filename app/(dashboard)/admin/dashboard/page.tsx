@@ -1,57 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import {
-  Users,
-  UserCheck,
-  UserX,
-  ClipboardList,
-  Clock,
-  CheckCircle,
-  Wifi,
-  Wallet,
-  TrendingUp,
-  TrendingDown,
-  Star,
-  Plus,
-  BarChart3,
-  Trophy,
-  AlertTriangle,
-  Bell,
-  CheckSquare,
-  MapPin,
-} from "lucide-react"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { employees, tasks, attendance, notifications } from "@/data/mock"
+import { MapPin } from "lucide-react"
+import { employees, tasks, attendance } from "@/data/mock"
 
 function formatCurrency(amount: number): string {
   if (amount >= 1_000_000_000) return `Rp ${(amount / 1_000_000_000).toFixed(1)}M`
@@ -59,113 +11,36 @@ function formatCurrency(amount: number): string {
   return `Rp ${amount.toLocaleString("id-ID")}`
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
-}
-
-function getRelativeTime(dateStr: string): string {
-  const now = new Date()
-  const date = new Date(dateStr)
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMins / 60)
-  const diffDays = Math.floor(diffHours / 24)
-
-  if (diffMins < 1) return "Baru saja"
-  if (diffMins < 60) return `${diffMins} menit yang lalu`
-  if (diffHours < 24) return `${diffHours} jam yang lalu`
-  return `${diffDays} hari yang lalu`
-}
-
-const COLORS = {
-  blue: "#3b82f6",
-  green: "#22c55e",
-  red: "#ef4444",
-  yellow: "#eab308",
-  purple: "#a855f7",
-  orange: "#f97316",
-}
-
-const PIE_COLORS = [COLORS.blue, COLORS.green, COLORS.orange, COLORS.purple, COLORS.red]
-
-const statConfig = [
+const statCards = [
   {
-    key: "totalEmployees",
-    label: "Total Karyawan",
-    icon: Users,
-    color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-    change: "+2%",
-    up: true,
+    key: "activeTasks",
+    label: "Tugas Aktif",
+    icon: "🗂️",
+    bg: "bg-blue-50",
+    valueColor: "text-gray-900",
   },
   {
-    key: "presentToday",
-    label: "Hadir Hari Ini",
-    icon: UserCheck,
-    color: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
-    change: "+5%",
-    up: true,
+    key: "working",
+    label: "Sedang Bekerja",
+    icon: "👷",
+    bg: "bg-green-50",
+    valueColor: "text-green-600",
   },
   {
-    key: "absentToday",
-    label: "Tidak Hadir",
-    icon: UserX,
-    color: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
-    change: "-3%",
-    up: false,
+    key: "notAbsent",
+    label: "Belum Absen",
+    icon: "🚫",
+    bg: "bg-red-50",
+    valueColor: "text-red-600",
   },
   {
-    key: "tasksToday",
-    label: "Tugas Hari Ini",
-    icon: ClipboardList,
-    color: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400",
-    change: "+8%",
-    up: true,
+    key: "totalSalary",
+    label: "Total Gaji Berjalan",
+    icon: "💸",
+    bg: "bg-amber-50",
+    valueColor: "text-green-600",
+    isCurrency: true,
   },
-  {
-    key: "pendingTasks",
-    label: "Tugas Tertunda",
-    icon: Clock,
-    color: "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400",
-    change: "-12%",
-    up: false,
-  },
-  {
-    key: "completedTasks",
-    label: "Tugas Selesai",
-    icon: CheckCircle,
-    color: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
-    change: "+15%",
-    up: true,
-  },
-  {
-    key: "onlineEmployees",
-    label: "Karyawan Online",
-    icon: Wifi,
-    color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-    change: "+4%",
-    up: true,
-  },
-  {
-    key: "monthlySalary",
-    label: "Gaji Bulanan",
-    icon: Wallet,
-    color: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
-    change: "+2%",
-    up: true,
-  },
-]
-
-const rewardCategories = [
-  { name: "Instalasi", value: 12 },
-  { name: "Maintenance", value: 8 },
-  { name: "Perbaikan", value: 10 },
-  { name: "Inspeksi", value: 6 },
-  { name: "Bonus", value: 4 },
 ]
 
 export default function AdminDashboardPage() {
@@ -176,478 +51,120 @@ export default function AdminDashboardPage() {
   const todayAttendance = attendance.filter((a) => a.date === todayStr)
   const presentToday = todayAttendance.filter(
     (a) => a.status === "present" || a.status === "late"
+  )
+  const notAbsentYet = activeEmployees.filter(
+    (emp) => !todayAttendance.some((a) => a.employeeId === emp.id && (a.status === "present" || a.status === "late"))
   ).length
-  const absentToday = todayAttendance.filter(
-    (a) => a.status === "absent"
-  ).length
-  const tasksToday = tasks.filter((t) => t.workingDate === todayStr).length
-  const pendingTasks = tasks.filter((t) => t.status === "pending").length
-  const completedTasks = tasks.filter((t) => t.status === "completed").length
-  const monthlySalary = activeEmployees.reduce((sum, e) => sum + e.salary, 0)
 
-  const stats = {
-    totalEmployees: activeEmployees.length,
-    presentToday,
-    absentToday,
-    tasksToday,
-    pendingTasks,
-    completedTasks,
-    onlineEmployees: Math.floor(presentToday * 0.85),
-    monthlySalary,
+  const activeTasks = tasks.filter(
+    (t) => t.status === "pending" || t.status === "in_progress"
+  ).length
+  const working = presentToday.filter(
+    (a) => a.checkIn && !a.checkOut
+  ).length
+
+  // Simplified daily running salary
+  const totalSalary = presentToday.reduce((sum, a) => {
+    const emp = employees.find((e) => e.id === a.employeeId)
+    if (!emp) return sum
+    if (a.workingDuration > 0 && emp.salary > 0) {
+      return sum + Math.round((a.workingDuration / 60) * (emp.salary / 22 / 8))
+    }
+    return sum
+  }, 0)
+
+  const stats: Record<string, number | string> = {
+    activeTasks,
+    working,
+    notAbsent: notAbsentYet,
+    totalSalary,
   }
 
-  const attendanceChartData = (() => {
-    const days = []
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      const dateStr = format(d, "yyyy-MM-dd")
-      const dayAttendance = attendance.filter((a) => a.date === dateStr)
-      const present = dayAttendance.filter((a) => a.status === "present").length
-      const late = dayAttendance.filter((a) => a.status === "late").length
-      const absent = dayAttendance.filter((a) => a.status === "absent").length
-      days.push({
-        day: format(d, "EEE", { locale: id }),
-        hadir: present,
-        terlambat: late,
-        tidak_hadir: absent,
-      })
-    }
-    return days
-  })()
-
-  const taskCompletionData = (() => {
-    const days = []
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      const dateStr = format(d, "yyyy-MM-dd")
-      const completed = tasks.filter(
-        (t) => t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd") === dateStr
-      ).length
-      const created = tasks.filter(
-        (t) => format(new Date(t.createdAt), "yyyy-MM-dd") === dateStr
-      ).length
-      days.push({
-        date: format(d, "dd/MM"),
-        selesai: completed,
-        dibuat: created,
-      })
-    }
-    return days
-  })()
-
-  const topEmployees = (() => {
-    const empStats = employees
-      .filter((e) => e.status === "active")
-      .map((emp) => {
-        const empCompletedTasks = tasks.filter(
-          (t) => t.assignedTo === emp.id && t.status === "completed"
-        )
-        const avgDuration =
-          empCompletedTasks.length > 0
-            ? Math.round(
-                empCompletedTasks.reduce((sum, t) => {
-                  if (t.completedAt && t.startedAt) {
-                    return sum + (new Date(t.completedAt).getTime() - new Date(t.startedAt).getTime()) / 60000
-                  }
-                  return sum + t.estimatedDuration
-                }, 0) / empCompletedTasks.length
-              )
-            : 0
-        const rating = Math.min(5, 3 + empCompletedTasks.length * 0.3)
-        return {
-          ...emp,
-          tasksCompleted: empCompletedTasks.length,
-          avgDuration,
-          rating: Math.round(rating * 10) / 10,
-        }
-      })
-      .sort((a, b) => b.tasksCompleted - a.tasksCompleted)
-      .slice(0, 5)
-    return empStats
-  })()
-
-  const recentActivities = notifications
-    .slice(0, 8)
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
+  const fieldEmployees = [
+    { name: "Budi S.", color: "bg-blue-500", left: "15%", top: "25%" },
+    { name: "Eko P.", color: "bg-green-500", left: "35%", top: "40%" },
+    { name: "Gilang R.", color: "bg-orange-500", left: "55%", top: "20%" },
+    { name: "Indra K.", color: "bg-purple-500", left: "70%", top: "50%" },
+    { name: "Lukman H.", color: "bg-red-500", left: "25%", top: "65%" },
+    { name: "Joko W.", color: "bg-yellow-500", left: "60%", top: "70%" },
+    { name: "Putri A.", color: "bg-teal-500", left: "80%", top: "30%" },
+  ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard Admin</h1>
-          <p className="text-muted-foreground">
-            {format(now, "EEEE, dd MMMM yyyy", { locale: id })}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/admin/tasks/create">
-            <Button>
-              <Plus className="size-4" />
-              Buat Tugas
-            </Button>
-          </Link>
-          <Link href="/admin/reports">
-            <Button variant="outline">
-              <BarChart3 className="size-4" />
-              Lihat Laporan
-            </Button>
-          </Link>
-        </div>
-      </div>
+    <div className="space-y-4">
+      {/* Stat cards */}
+      <div className="space-y-3">
+        {statCards.map((card) => {
+          const rawValue = stats[card.key]
+          const displayValue = card.isCurrency
+            ? formatCurrency(rawValue as number)
+            : String(rawValue)
 
-      <Separator />
-
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {statConfig.map((stat, index) => {
-          const Icon = stat.icon
-          const value = stats[stat.key as keyof typeof stats]
           return (
-            <div key={stat.key}>
-              <Card className="h-full">
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${stat.color}`}>
-                      <Icon className="size-5" />
-                    </div>
-                    <div
-                      className={`flex items-center gap-1 text-xs font-medium ${
-                        stat.up ? "text-green-600" : "text-red-600"
-                      }`}
-                    >
-                      {stat.up ? (
-                        <TrendingUp className="size-3" />
-                      ) : (
-                        <TrendingDown className="size-3" />
-                      )}
-                      {stat.change}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{stat.label}</p>
-                    <p className="text-2xl font-bold">
-                      {stat.key === "monthlySalary"
-                        ? formatCurrency(value as number)
-                        : (value as number).toLocaleString("id-ID")}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+            <div
+              key={card.key}
+              className="flex items-center justify-between rounded-2xl bg-white p-5 shadow-sm border border-gray-100"
+            >
+              <div>
+                <p className="text-sm text-gray-500 font-medium mb-1">{card.label}</p>
+                <p className={`text-3xl font-bold ${card.valueColor}`}>{displayValue}</p>
+              </div>
+              <div className={`flex size-14 items-center justify-center rounded-2xl ${card.bg} text-2xl`}>
+                {card.icon}
+              </div>
             </div>
           )
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Kehadiran 7 Hari Terakhir</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={attendanceChartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="day" fontSize={12} tickLine={false} />
-                  <YAxis fontSize={12} tickLine={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar
-                    dataKey="hadir"
-                    name="Hadir"
-                    fill={COLORS.green}
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="terlambat"
-                    name="Terlambat"
-                    fill={COLORS.yellow}
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="tidak_hadir"
-                    name="Tidak Hadir"
-                    fill={COLORS.red}
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Map */}
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+        <div className="flex items-center gap-2 p-4 pb-2">
+          <div className="size-3 rounded-full bg-gray-300 animate-pulse" />
+          <span className="text-sm font-semibold text-gray-700">Pemantauan Lokasi Real-time</span>
+        </div>
+        <div
+          className="relative w-full"
+          style={{
+            height: "280px",
+            background: "linear-gradient(135deg, #e8f4f8 0%, #d4e9f0 30%, #c8e0ea 60%, #d6e8d0 100%)",
+          }}
+        >
+          {/* Simple map background shapes */}
+          <svg
+            className="absolute inset-0 w-full h-full opacity-30"
+            viewBox="0 0 400 280"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M0 200 Q50 180 100 190 Q150 200 200 185 Q250 170 300 180 Q350 190 400 175 L400 280 L0 280 Z" fill="#a8d8b0" />
+            <path d="M50 100 Q80 90 120 95 Q160 100 200 90 Q240 80 280 88 Q320 96 360 85 Q380 80 400 82 L400 120 Q380 118 360 122 Q320 130 280 122 Q240 114 200 120 Q160 126 120 120 Q80 114 50 120 Z" fill="#c8e8d8" />
+            <rect x="150" y="60" width="60" height="40" rx="4" fill="#b8ccd8" opacity="0.5" />
+            <rect x="280" y="80" width="45" height="30" rx="4" fill="#b8ccd8" opacity="0.4" />
+          </svg>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Tren Penyelesaian Tugas (30 Hari)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={taskCompletionData}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="date" fontSize={12} tickLine={false} interval={4} />
-                  <YAxis fontSize={12} tickLine={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="selesai"
-                    name="Selesai"
-                    stroke={COLORS.green}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="dibuat"
-                    name="Dibuat"
-                    stroke={COLORS.blue}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+          {/* Location pins */}
+          {fieldEmployees.map((emp, i) => (
+            <div
+              key={i}
+              className="absolute flex flex-col items-center"
+              style={{ left: emp.left, top: emp.top, transform: "translate(-50%, -100%)" }}
+            >
+              <div className={`flex size-8 items-center justify-center rounded-full ${emp.color} shadow-md ring-2 ring-white`}>
+                <MapPin className="size-4 text-white" />
+              </div>
+              <div className="mt-0.5 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow-sm whitespace-nowrap">
+                {emp.name}
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          ))}
+
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white/70 to-transparent p-3">
+            <p className="text-xs text-gray-500">
+              {fieldEmployees.length} karyawan aktif di lapangan • Update: baru saja
+            </p>
+          </div>
+        </div>
       </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Produktivitas Karyawan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">Rank</TableHead>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Departemen</TableHead>
-                  <TableHead className="text-center">Tugas Selesai</TableHead>
-                  <TableHead className="text-center">Rata-rata Durasi</TableHead>
-                  <TableHead className="text-center">Rating</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {topEmployees.map((emp, index) => (
-                  <TableRow key={emp.id}>
-                    <TableCell>
-                      <div
-                        className={`flex size-7 items-center justify-center rounded-full text-xs font-bold ${
-                          index === 0
-                            ? "bg-yellow-100 text-yellow-700"
-                            : index === 1
-                              ? "bg-slate-200 text-slate-600"
-                              : index === 2
-                                ? "bg-orange-100 text-orange-700"
-                                : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {index + 1}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar size="sm">
-                          <AvatarFallback>{getInitials(emp.name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{emp.name}</p>
-                          <p className="text-xs text-muted-foreground">{emp.position}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {emp.department}
-                    </TableCell>
-                    <TableCell className="text-center font-medium">
-                      {emp.tasksCompleted}
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground">
-                      {emp.avgDuration > 0 ? `${emp.avgDuration} mnt` : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-1">
-                        <Star className="size-4 fill-yellow-400 text-yellow-400" />
-                        <span className="text-sm font-medium">{emp.rating}</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribusi Reward</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={rewardCategories}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {rewardCategories.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    iconType="circle"
-                    iconSize={8}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="size-5" />
-            Pemantauan Lokasi Real-time
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex size-2 rounded-full bg-green-500"></span>
-            </span>
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              Live
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="relative w-full overflow-hidden rounded-xl border bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900" style={{ height: "320px" }}>
-            <div className="absolute inset-0 opacity-20">
-              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-400" />
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-              </svg>
-            </div>
-            <div className="absolute left-[15%] top-[25%] flex flex-col items-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
-                <MapPin className="size-4 text-white" />
-              </div>
-              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Budi S.</span>
-            </div>
-            <div className="absolute left-[35%] top-[40%] flex flex-col items-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
-                <MapPin className="size-4 text-white" />
-              </div>
-              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Eko P.</span>
-            </div>
-            <div className="absolute left-[55%] top-[20%] flex flex-col items-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
-                <MapPin className="size-4 text-white" />
-              </div>
-              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Gilang R.</span>
-            </div>
-            <div className="absolute left-[70%] top-[50%] flex flex-col items-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
-                <MapPin className="size-4 text-white" />
-              </div>
-              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Indra K.</span>
-            </div>
-            <div className="absolute left-[25%] top-[65%] flex flex-col items-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
-                <MapPin className="size-4 text-white" />
-              </div>
-              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Lukman H.</span>
-            </div>
-            <div className="absolute left-[60%] top-[70%] flex flex-col items-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
-                <MapPin className="size-4 text-white" />
-              </div>
-              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Joko W.</span>
-            </div>
-            <div className="absolute left-[80%] top-[30%] flex flex-col items-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
-                <MapPin className="size-4 text-white" />
-              </div>
-              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Putri A.</span>
-            </div>
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/80 to-transparent p-3 dark:from-slate-900/80">
-              <p className="text-xs text-muted-foreground">
-                7 karyawan aktif dilapangan &bull; Update terakhir: baru saja
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Aktivitas Terbaru</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {recentActivities.map((activity) => {
-              const iconMap: Record<string, typeof Bell> = {
-                task: CheckSquare,
-                attendance: Clock,
-                reward: Trophy,
-                system: Bell,
-                warning: AlertTriangle,
-              }
-              const colorMap: Record<string, string> = {
-                task: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-                attendance: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
-                reward: "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400",
-                system: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-                warning: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
-              }
-              const Icon = iconMap[activity.type] || Bell
-              return (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-4 rounded-xl p-3 transition-colors hover:bg-muted/50"
-                >
-                  <div
-                    className={`flex size-9 shrink-0 items-center justify-center rounded-full ${colorMap[activity.type]}`}
-                  >
-                    <Icon className="size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{activity.title}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-1">
-                      {activity.message}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {getRelativeTime(activity.createdAt)}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

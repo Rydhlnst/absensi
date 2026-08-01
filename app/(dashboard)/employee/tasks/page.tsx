@@ -1,37 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { format } from "date-fns"
-import { id } from "date-fns/locale"
-import {
-  MapPin,
-  Phone,
-  MessageCircle,
-  Plus,
-  Search,
-  SlidersHorizontal,
-  Star,
-  Clock,
-  User,
-  FileText,
-} from "lucide-react"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { MapPin, Eye } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -39,189 +9,133 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import { tasks } from "@/data/mock"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { tasks, employees } from "@/data/mock"
 import { authClient } from "@/lib/auth-client"
-import type { Task, TaskCategory, TaskPriority, TaskStatus } from "@/types"
-
-const categoryColors: Record<TaskCategory, string> = {
-  installation: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  maintenance: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  billing: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  repair: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  inspection: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-}
+import type { Task, TaskCategory } from "@/types"
+import { toast } from "sonner"
 
 const categoryLabels: Record<TaskCategory, string> = {
-  installation: "Instalasi",
-  maintenance: "Maintenance",
-  billing: "Billing",
-  repair: "Perbaikan",
-  inspection: "Inspeksi",
+  installation: "PEMASANGAN",
+  maintenance: "MAINTENANCE",
+  billing: "TAGIHAN",
+  repair: "GANGGUAN",
+  inspection: "INSPEKSI",
 }
 
-const priorityLabels: Record<TaskPriority, string> = {
-  low: "Rendah",
-  medium: "Sedang",
-  high: "Tinggi",
-  urgent: "Urgent",
+const categoryBannerColors: Record<TaskCategory, string> = {
+  installation: "bg-blue-600",
+  maintenance: "bg-purple-600",
+  billing: "bg-yellow-500",
+  repair: "bg-red-600",
+  inspection: "bg-teal-600",
 }
 
-const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
-  pending: {
-    label: "Pending",
-    className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  },
-  in_progress: {
-    label: "Dikerjakan",
-    className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  },
-  completed: {
-    label: "Selesai",
-    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  },
-  cancelled: {
-    label: "Dibatalkan",
-    className: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
-  },
-  on_hold: {
-    label: "Ditunda",
-    className: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
-  },
+const createFormDefault = {
+  category: "installation" as TaskCategory,
+  address: "",
+  addressDetail: "",
+  customerPhone: "",
+  coordinates: "",
+  description: "",
 }
 
-function TaskCard({ task }: { task: Task }) {
-  const isCompleted = task.status === "completed"
-  const status = statusConfig[task.status]
+function TaskCard({ task, currentEmployeeName }: { task: Task; currentEmployeeName: string }) {
+  const mapsUrl = `https://www.google.com/maps?q=${task.latitude},${task.longitude}`
 
   return (
-    <Card size="sm">
-      <CardContent className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className={categoryColors[task.category]}>
-            {categoryLabels[task.category]}
-          </Badge>
-          <Badge variant="secondary">
-            <Star className="size-3" />
-            {task.rewardPoints} poin
-          </Badge>
-          <Badge className={status.className}>{status.label}</Badge>
-        </div>
+    <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden mb-3">
+      {/* Category banner */}
+      <div className={`${categoryBannerColors[task.category]} flex items-center justify-between px-4 py-2.5`}>
+        <span className="text-sm font-bold text-white tracking-wide">
+          {categoryLabels[task.category]}
+        </span>
+        <span className="text-xs font-bold text-green-300">+{task.rewardPoints} Poin</span>
+      </div>
 
-        <div>
-          <h3 className="font-semibold">{task.title}</h3>
-          <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-            <User className="size-3.5" />
-            {task.customerName}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-          <div className="flex items-start gap-1.5">
-            <MapPin className="mt-0.5 size-3.5 shrink-0" />
-            <span>
-              {task.address}
-              {task.addressDetail && `, ${task.addressDetail}`}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Phone className="size-3.5" />
-            {task.customerPhone}
-          </div>
-        </div>
-
-        <p className="line-clamp-2 text-sm text-muted-foreground">
-          {task.description}
+      <div className="px-4 py-1 bg-gray-50 border-b border-gray-100">
+        <p className="text-xs text-gray-500">
+          Pembuat Tugas: <span className="font-semibold text-gray-700">{currentEmployeeName}</span>
         </p>
+      </div>
 
-        {isCompleted && task.completedAt && (
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>
-              Selesai:{" "}
-              {format(new Date(task.completedAt), "dd MMM yyyy, HH:mm", {
-                locale: id,
-              })}
+      <div className="p-4 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-2 flex-1 min-w-0">
+            <div className="flex items-start gap-2">
+              <MapPin className="size-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm">
+                <span className="font-semibold">Alamat:</span> {task.address}
+              </p>
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 ml-auto"
+              >
+                <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-600 hover:bg-gray-50">
+                  🗺 Google Maps
+                </span>
+              </a>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <span className="text-sm shrink-0">🏠</span>
+              <p className="text-sm">
+                <span className="font-semibold">Detail Alamat:</span>{" "}
+                {task.addressDetail || "-"}
+              </p>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <span className="text-sm shrink-0">📋</span>
+              <p className="text-sm">
+                <span className="font-semibold">Keterangan Tugas:</span> {task.description}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2 border-t border-gray-100">
+          <button className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <Eye className="size-4" />
+            Detail
+          </button>
+          {(task.status === "pending" || task.status === "in_progress") && (
+            <button
+              onClick={() => toast.success("Tugas dimulai!")}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-primary py-2 text-sm font-medium text-primary hover:bg-primary/5"
+            >
+              ▶ Kerjakan Tugas
+            </button>
+          )}
+          {task.status === "completed" && (
+            <span className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-green-300 py-2 text-sm font-medium text-green-600 bg-green-50">
+              ✓ Selesai
             </span>
-            {task.startedAt && (
-              <span>
-                Durasi:{" "}
-                {Math.round(
-                  (new Date(task.completedAt).getTime() -
-                    new Date(task.startedAt).getTime()) /
-                    60000
-                )}{" "}
-                mnt
-              </span>
-            )}
-          </div>
-        )}
-
-        {!isCompleted && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button size="sm" variant="outline">
-              <FileText className="size-3.5" />
-              Detail
-            </Button>
-            {task.status === "pending" && (
-              <Button size="sm">
-                <Clock className="size-3.5" />
-                Mulai Tugas
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              asChild
-            >
-              <a
-                href={`https://www.google.com/maps?q=${task.latitude},${task.longitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MapPin className="size-3.5" />
-                Maps
-              </a>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              asChild
-            >
-              <a
-                href={`https://wa.me/${task.customerPhone.replace(/[^0-9]/g, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MessageCircle className="size-3.5" />
-                WhatsApp
-              </a>
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <a href={`tel:${task.customerPhone}`}>
-                <Phone className="size-3.5" />
-                Telepon
-              </a>
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
 export default function EmployeeTasksPage() {
   const { data: session } = authClient.useSession()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
-  const [sortBy, setSortBy] = useState<string>("priority")
+  const [activeTab, setActiveTab] = useState<"active" | "done">("active")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [form, setForm] = useState(createFormDefault)
 
-  const CURRENT_EMPLOYEE_ID = session?.user?.id || ""
+  const currentUserId = session?.user?.id || ""
+  const currentEmployee = employees.find((e) => e.id === currentUserId) || employees[2]
 
   const myTasks = useMemo(
-    () => tasks.filter((t) => t.assignedTo === CURRENT_EMPLOYEE_ID),
-    [CURRENT_EMPLOYEE_ID]
+    () => tasks.filter((t) => t.assignedTo === currentUserId),
+    [currentUserId]
   )
 
   const activeTasks = useMemo(
@@ -229,189 +143,150 @@ export default function EmployeeTasksPage() {
     [myTasks]
   )
 
-  const completedTasks = useMemo(
+  const doneTasks = useMemo(
     () => myTasks.filter((t) => t.status === "completed"),
     [myTasks]
   )
 
-  const priorityOrder: Record<TaskPriority, number> = {
-    urgent: 0,
-    high: 1,
-    medium: 2,
-    low: 3,
+  const displayTasks = activeTab === "active" ? activeTasks : doneTasks
+
+  const handleCreate = () => {
+    toast.success("Tugas berhasil dibuat!")
+    setDialogOpen(false)
+    setForm(createFormDefault)
   }
-
-  const filterAndSort = (taskList: Task[]) => {
-    let filtered = taskList
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.customerName.toLowerCase().includes(q) ||
-          t.address.toLowerCase().includes(q)
-      )
-    }
-
-    if (categoryFilter !== "all") {
-      filtered = filtered.filter((t) => t.category === categoryFilter)
-    }
-
-    const sorted = [...filtered]
-    switch (sortBy) {
-      case "priority":
-        sorted.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
-        break
-      case "date":
-        sorted.sort(
-          (a, b) =>
-            new Date(b.workingDate).getTime() - new Date(a.workingDate).getTime()
-        )
-        break
-      case "status":
-        sorted.sort((a, b) => {
-          const order: Record<TaskStatus, number> = {
-            in_progress: 0,
-            pending: 1,
-            on_hold: 2,
-            completed: 3,
-            cancelled: 4,
-          }
-          return order[a.status] - order[b.status]
-        })
-        break
-    }
-
-    return sorted
-  }
-
-  const filteredActive = useMemo(
-    () => filterAndSort(activeTasks),
-    [activeTasks, searchQuery, categoryFilter, sortBy]
-  )
-
-  const filteredCompleted = useMemo(
-    () => filterAndSort(completedTasks),
-    [completedTasks, searchQuery, categoryFilter, sortBy]
-  )
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tugas Saya</h1>
-          <p className="text-muted-foreground">
-            {activeTasks.length} tugas aktif, {completedTasks.length} selesai
-          </p>
+    <div className="relative min-h-screen">
+      <div className="p-4 pb-24">
+        {/* Tabs */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setActiveTab("active")}
+            className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors ${
+              activeTab === "active"
+                ? "bg-primary text-white shadow-sm"
+                : "bg-white border border-gray-200 text-gray-600"
+            }`}
+          >
+            Belum Selesai ({activeTasks.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("done")}
+            className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors ${
+              activeTab === "done"
+                ? "bg-primary text-white shadow-sm"
+                : "bg-white border border-gray-200 text-gray-600"
+            }`}
+          >
+            Selesai ({doneTasks.length})
+          </button>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="size-4" />
+
+        {/* Task list */}
+        {displayTasks.length === 0 ? (
+          <div className="rounded-2xl bg-white p-8 text-center text-gray-400 text-sm shadow-sm border border-gray-100">
+            {activeTab === "active" ? "Tidak ada tugas aktif" : "Tidak ada tugas selesai"}
+          </div>
+        ) : (
+          displayTasks.map((task) => (
+            <TaskCard key={task.id} task={task} currentEmployeeName={currentEmployee.name} />
+          ))
+        )}
+      </div>
+
+      {/* FAB */}
+      <button
+        onClick={() => setDialogOpen(true)}
+        className="fixed bottom-24 right-5 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg text-2xl z-40 hover:bg-primary/90"
+      >
+        +
+      </button>
+
+      {/* Create task dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Buat Tugas Mandiri Baru</DialogTitle>
+            <DialogDescription>Isi detail tugas yang akan dikerjakan</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs font-semibold mb-1.5 block">Kategori Tugas</Label>
+              <div className="flex gap-2 flex-wrap">
+                {(["installation", "repair", "billing"] as TaskCategory[]).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setForm((f) => ({ ...f, category: cat }))}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold border transition-colors ${
+                      form.category === cat
+                        ? "bg-primary text-white border-primary"
+                        : "border-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {cat === "installation" ? "Pemasangan" : cat === "repair" ? "Gangguan" : "Tagihan"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-500">
+              Reward Membuat Tugas: <span className="font-semibold text-green-600">+10 Poin</span>
+            </div>
+
+            <div>
+              <Label className="text-xs">Alamat Utama *</Label>
+              <Input
+                placeholder="Masukkan alamat utama pelanggan..."
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Detail Alamat</Label>
+              <Input
+                placeholder="No. Rumah, Gang, Patokan..."
+                value={form.addressDetail}
+                onChange={(e) => setForm((f) => ({ ...f, addressDetail: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">No. Telp/WA Pelanggan</Label>
+              <Input
+                placeholder="Contoh: 08123456789"
+                value={form.customerPhone}
+                onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Koordinat Lokasi (Latitude, Longitude)</Label>
+              <Input
+                placeholder="Contoh: -6.2297, 106.8158"
+                value={form.coordinates}
+                onChange={(e) => setForm((f) => ({ ...f, coordinates: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Keterangan</Label>
+              <Textarea
+                placeholder="Deskripsi tugas singkat..."
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                className="resize-none"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
+            <Button onClick={handleCreate} className="bg-green-600 hover:bg-green-700">
               Buat Tugas
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Buat Tugas Baru</DialogTitle>
-              <DialogDescription>
-                Form pembuatan tugas baru akan tersedia di sini.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Tutup
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Cari tugas..."
-              className="pl-9"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[140px]">
-                <SlidersHorizontal className="size-4" />
-                <SelectValue placeholder="Kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua</SelectItem>
-                <SelectItem value="installation">Instalasi</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
-                <SelectItem value="billing">Billing</SelectItem>
-                <SelectItem value="repair">Perbaikan</SelectItem>
-                <SelectItem value="inspection">Inspeksi</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Urutkan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="priority">Prioritas</SelectItem>
-                <SelectItem value="date">Tanggal</SelectItem>
-                <SelectItem value="status">Status</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      <Tabs defaultValue="active">
-        <TabsList>
-          <TabsTrigger value="active">
-            Aktif ({filteredActive.length})
-          </TabsTrigger>
-          <TabsTrigger value="completed">
-            Selesai ({filteredCompleted.length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active" className="mt-4">
-          {filteredActive.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-                <FileText className="size-10" />
-                <p>Tidak ada tugas aktif</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {filteredActive.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="completed" className="mt-4">
-          {filteredCompleted.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-                <FileText className="size-10" />
-                <p>Tidak ada tugas selesai</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {filteredCompleted.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
