@@ -37,12 +37,12 @@ const categoryLabels: Record<TaskCategory, string> = {
   inspection: "INSPEKSI",
 }
 
-const categoryBannerBg: Record<TaskCategory, string> = {
-  installation: "bg-blue-600",
-  maintenance: "bg-purple-600",
-  billing: "bg-yellow-500",
-  repair: "bg-red-600",
-  inspection: "bg-teal-600",
+const categoryColors: Record<TaskCategory, { bg: string; text: string }> = {
+  installation: { bg: "bg-blue-600", text: "text-white" },
+  maintenance: { bg: "bg-purple-600", text: "text-white" },
+  billing: { bg: "bg-yellow-500", text: "text-white" },
+  repair: { bg: "bg-red-600", text: "text-white" },
+  inspection: { bg: "bg-teal-600", text: "text-white" },
 }
 
 interface TaskForm {
@@ -85,39 +85,40 @@ function TaskCard({
   onDelete: (t: Task) => void
 }) {
   const mapsUrl = `https://www.google.com/maps?q=${task.latitude},${task.longitude}`
-  const assignee = employees.find((e) => e.id === task.assignedTo)
+  const creator = employees.find((e) => e.id === task.assignedBy)
+  const catColor = categoryColors[task.category]
 
   return (
     <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden mb-3">
-      {/* Category banner */}
-      <div className={`${categoryBannerBg[task.category]} flex items-center justify-between px-4 py-2.5`}>
-        <span className="text-sm font-bold text-white tracking-wide">
+      <div className="flex items-center justify-between px-4 py-2.5">
+        <span className={`text-xs font-bold tracking-wide px-3 py-1 rounded-full ${catColor.bg} ${catColor.text}`}>
           {categoryLabels[task.category]}
         </span>
-        <span className="text-xs font-bold text-green-300">+{task.rewardPoints} Poin</span>
+        <span className="text-sm font-bold text-green-600">+{task.rewardPoints} Poin</span>
       </div>
-      <div className="px-4 py-1.5 bg-gray-50 border-b border-gray-100">
+
+      <div className="px-4 py-2 bg-gray-50 border-t border-b border-gray-100">
         <p className="text-xs text-gray-500">
-          Pembuat Tugas: <span className="font-semibold text-gray-700">Admin</span>
-          {assignee && (
-            <> · Teknisi: <span className="font-semibold text-gray-700">{assignee.name}</span></>
-          )}
+          Dibuat oleh: <span className="font-semibold text-gray-700">{creator?.name || "Admin"}</span>
         </p>
       </div>
 
-      <div className="p-4 space-y-2">
+      <div className="p-4 space-y-3">
         <div className="flex items-start gap-2">
           <MapPin className="size-4 text-red-500 shrink-0 mt-0.5" />
-          <p className="text-sm flex-1 min-w-0">
-            <span className="font-semibold">Alamat:</span> {task.address}
-          </p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm">
+              <span className="font-semibold">Alamat:</span>{" "}
+              <span className="font-bold">{task.address}</span>
+            </p>
+          </div>
           <a
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="shrink-0"
           >
-            <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">
+            <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">
               🗺 Google Maps
             </span>
           </a>
@@ -138,7 +139,6 @@ function TaskCard({
         </div>
       </div>
 
-      {/* Action buttons */}
       <div className="grid grid-cols-3 border-t border-gray-100">
         <button
           onClick={() => toast.info(`Detail: ${task.title}`)}
@@ -288,7 +288,6 @@ export default function AdminTasksPage() {
   return (
     <div className="relative min-h-screen">
       <div className="p-0 pb-24">
-        {/* Tabs */}
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setActiveTab("active")}
@@ -312,7 +311,6 @@ export default function AdminTasksPage() {
           </button>
         </div>
 
-        {/* Task list */}
         {displayTasks.length === 0 ? (
           <div className="rounded-2xl bg-white p-8 text-center text-gray-400 text-sm shadow-sm border border-gray-100">
             Tidak ada tugas
@@ -324,7 +322,6 @@ export default function AdminTasksPage() {
         )}
       </div>
 
-      {/* FAB */}
       <button
         onClick={openCreate}
         className="fixed bottom-6 right-5 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg text-2xl z-40 hover:bg-primary/90"
@@ -332,7 +329,6 @@ export default function AdminTasksPage() {
         +
       </button>
 
-      {/* Create/Edit Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { MapPin, Eye } from "lucide-react"
+import { MapPin, Eye, Plus } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -27,12 +27,19 @@ const categoryLabels: Record<TaskCategory, string> = {
   inspection: "INSPEKSI",
 }
 
-const categoryBannerColors: Record<TaskCategory, string> = {
-  installation: "bg-blue-600",
-  maintenance: "bg-purple-600",
-  billing: "bg-yellow-500",
-  repair: "bg-red-600",
-  inspection: "bg-teal-600",
+const categoryColors: Record<TaskCategory, string> = {
+  installation: "bg-blue-600 text-white",
+  maintenance: "bg-purple-600 text-white",
+  billing: "bg-yellow-500 text-white",
+  repair: "bg-red-600 text-white",
+  inspection: "bg-teal-600 text-white",
+}
+
+const statusLabels: Record<string, { label: string; className: string }> = {
+  pending: { label: "Menunggu", className: "bg-yellow-100 text-yellow-700" },
+  in_progress: { label: "Dikerjakan", className: "bg-blue-100 text-blue-700" },
+  completed: { label: "Selesai", className: "bg-green-100 text-green-700" },
+  cancelled: { label: "Dibatalkan", className: "bg-gray-100 text-gray-500" },
 }
 
 const createFormDefault = {
@@ -44,80 +51,59 @@ const createFormDefault = {
   description: "",
 }
 
-function TaskCard({ task, currentEmployeeName }: { task: Task; currentEmployeeName: string }) {
+function TaskCard({ task }: { task: Task }) {
   const mapsUrl = `https://www.google.com/maps?q=${task.latitude},${task.longitude}`
+  const badge = statusLabels[task.status] || statusLabels.pending
 
   return (
-    <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden mb-3">
-      {/* Category banner */}
-      <div className={`${categoryBannerColors[task.category]} flex items-center justify-between px-4 py-2.5`}>
-        <span className="text-sm font-bold text-white tracking-wide">
-          {categoryLabels[task.category]}
-        </span>
-        <span className="text-xs font-bold text-green-300">+{task.rewardPoints} Poin</span>
-      </div>
-
-      <div className="px-4 py-1 bg-gray-50 border-b border-gray-100">
-        <p className="text-xs text-gray-500">
-          Pembuat Tugas: <span className="font-semibold text-gray-700">{currentEmployeeName}</span>
-        </p>
-      </div>
-
-      <div className="p-4 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="space-y-2 flex-1 min-w-0">
-            <div className="flex items-start gap-2">
-              <MapPin className="size-4 text-red-500 shrink-0 mt-0.5" />
-              <p className="text-sm">
-                <span className="font-semibold">Alamat:</span> {task.address}
-              </p>
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 ml-auto"
-              >
-                <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-600 hover:bg-gray-50">
-                  🗺 Google Maps
-                </span>
-              </a>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <span className="text-sm shrink-0">🏠</span>
-              <p className="text-sm">
-                <span className="font-semibold">Detail Alamat:</span>{" "}
-                {task.addressDetail || "-"}
-              </p>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <span className="text-sm shrink-0">📋</span>
-              <p className="text-sm">
-                <span className="font-semibold">Keterangan Tugas:</span> {task.description}
-              </p>
-            </div>
-          </div>
+    <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wider ${categoryColors[task.category]}`}>
+            {categoryLabels[task.category]}
+          </span>
+          <span className="text-xs font-bold text-green-600">+{task.rewardPoints} Poin</span>
         </div>
 
-        <div className="flex gap-2 pt-2 border-t border-gray-100">
-          <button className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-            <Eye className="size-4" />
+        <div>
+          <p className="text-sm font-bold text-gray-900">{task.address}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{task.addressDetail || "-"}</p>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <span className="text-xs shrink-0 mt-0.5">📋</span>
+          <p className="text-xs text-gray-600">
+            <span className="font-semibold">Keterangan Tugas:</span> {task.description}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${badge.className}`}>
+            {badge.label}
+          </span>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">
+            <Eye className="size-3.5" />
             Detail
           </button>
           {(task.status === "pending" || task.status === "in_progress") && (
             <button
               onClick={() => toast.success("Tugas dimulai!")}
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-primary py-2 text-sm font-medium text-primary hover:bg-primary/5"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-primary py-2 text-xs font-bold text-white hover:bg-primary/90"
             >
-              ▶ Kerjakan Tugas
+              Kerjakan Tugas
             </button>
           )}
-          {task.status === "completed" && (
-            <span className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-green-300 py-2 text-sm font-medium text-green-600 bg-green-50">
-              ✓ Selesai
-            </span>
-          )}
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            🗺
+          </a>
         </div>
       </div>
     </div>
@@ -157,10 +143,10 @@ export default function EmployeeTasksPage() {
   }
 
   return (
-    <div className="relative min-h-screen">
-      <div className="p-4 pb-24">
+    <div className="relative min-h-screen bg-gray-50">
+      <div className="p-4 pb-24 space-y-4">
         {/* Tabs */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2">
           <button
             onClick={() => setActiveTab("active")}
             className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors ${
@@ -169,7 +155,7 @@ export default function EmployeeTasksPage() {
                 : "bg-white border border-gray-200 text-gray-600"
             }`}
           >
-            Belum Selesai ({activeTasks.length})
+            Tugas Aktif ({activeTasks.length})
           </button>
           <button
             onClick={() => setActiveTab("done")}
@@ -179,7 +165,7 @@ export default function EmployeeTasksPage() {
                 : "bg-white border border-gray-200 text-gray-600"
             }`}
           >
-            Selesai ({doneTasks.length})
+            Tugas Selesai ({doneTasks.length})
           </button>
         </div>
 
@@ -189,18 +175,20 @@ export default function EmployeeTasksPage() {
             {activeTab === "active" ? "Tidak ada tugas aktif" : "Tidak ada tugas selesai"}
           </div>
         ) : (
-          displayTasks.map((task) => (
-            <TaskCard key={task.id} task={task} currentEmployeeName={currentEmployee.name} />
-          ))
+          <div className="space-y-3">
+            {displayTasks.map((task) => (
+              <TaskCard key={task.id} task={task} />
+            ))}
+          </div>
         )}
       </div>
 
       {/* FAB */}
       <button
         onClick={() => setDialogOpen(true)}
-        className="fixed bottom-24 right-5 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg text-2xl z-40 hover:bg-primary/90"
+        className="fixed bottom-24 right-5 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg z-40 hover:bg-primary/90"
       >
-        +
+        <Plus className="size-6" />
       </button>
 
       {/* Create task dialog */}

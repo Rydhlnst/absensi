@@ -1,9 +1,11 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { MapPin } from "lucide-react"
+import { MapPin, ListChecks, Users } from "lucide-react"
 import { employees, tasks, attendance } from "@/data/mock"
+import { Button } from "@/components/ui/button"
 
 function formatCurrency(amount: number): string {
   if (amount >= 1_000_000_000) return `Rp ${(amount / 1_000_000_000).toFixed(1)}M`
@@ -44,7 +46,18 @@ const statCards = [
 ]
 
 export default function AdminDashboardPage() {
-  const now = new Date()
+  const [isRealTime, setIsRealTime] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  useEffect(() => {
+    if (!isRealTime) return
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [isRealTime])
+
+  const now = isRealTime ? currentTime : new Date()
   const todayStr = format(now, "yyyy-MM-dd")
 
   const activeEmployees = employees.filter((e) => e.status === "active")
@@ -63,7 +76,6 @@ export default function AdminDashboardPage() {
     (a) => a.checkIn && !a.checkOut
   ).length
 
-  // Simplified daily running salary
   const totalSalary = presentToday.reduce((sum, a) => {
     const emp = employees.find((e) => e.id === a.employeeId)
     if (!emp) return sum
@@ -81,18 +93,46 @@ export default function AdminDashboardPage() {
   }
 
   const fieldEmployees = [
-    { name: "Budi S.", color: "bg-blue-500", left: "15%", top: "25%" },
-    { name: "Eko P.", color: "bg-green-500", left: "35%", top: "40%" },
-    { name: "Gilang R.", color: "bg-orange-500", left: "55%", top: "20%" },
-    { name: "Indra K.", color: "bg-purple-500", left: "70%", top: "50%" },
-    { name: "Lukman H.", color: "bg-red-500", left: "25%", top: "65%" },
-    { name: "Joko W.", color: "bg-yellow-500", left: "60%", top: "70%" },
-    { name: "Putri A.", color: "bg-teal-500", left: "80%", top: "30%" },
+    { name: "Budi S.", status: "Bekerja", color: "bg-blue-500", left: "15%", top: "25%" },
+    { name: "Eko P.", status: "Bekerja", color: "bg-green-500", left: "35%", top: "40%" },
+    { name: "Gilang R.", status: "Perjalanan", color: "bg-orange-500", left: "55%", top: "20%" },
+    { name: "Indra K.", status: "Bekerja", color: "bg-purple-500", left: "70%", top: "50%" },
+    { name: "Lukman H.", status: "Istirahat", color: "bg-yellow-500", left: "25%", top: "65%" },
+    { name: "Joko W.", status: "Bekerja", color: "bg-teal-500", left: "60%", top: "70%" },
+    { name: "Putri A.", status: "Perjalanan", color: "bg-red-500", left: "80%", top: "30%" },
   ]
 
   return (
     <div className="space-y-4">
-      {/* Stat cards */}
+      <div className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-semibold text-gray-700">Simulasi Waktu</span>
+          <button
+            onClick={() => setIsRealTime(!isRealTime)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              isRealTime ? "bg-green-500" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block size-4 transform rounded-full bg-white transition-transform ${
+                isRealTime ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500">
+            {isRealTime ? "Waktu Asli" : "OFF"}
+          </span>
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Jam Sistem</p>
+            <p className="text-sm font-semibold text-gray-800">
+              {format(now, "EEEE, dd MMM yyyy", { locale: id })} • {format(now, "HH:mm:ss")}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-3">
         {statCards.map((card) => {
           const rawValue = stats[card.key]
@@ -117,7 +157,6 @@ export default function AdminDashboardPage() {
         })}
       </div>
 
-      {/* Map */}
       <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden">
         <div className="flex items-center gap-2 p-4 pb-2">
           <div className="size-3 rounded-full bg-gray-300 animate-pulse" />
@@ -130,7 +169,6 @@ export default function AdminDashboardPage() {
             background: "linear-gradient(135deg, #e8f4f8 0%, #d4e9f0 30%, #c8e0ea 60%, #d6e8d0 100%)",
           }}
         >
-          {/* Simple map background shapes */}
           <svg
             className="absolute inset-0 w-full h-full opacity-30"
             viewBox="0 0 400 280"
@@ -142,21 +180,32 @@ export default function AdminDashboardPage() {
             <rect x="280" y="80" width="45" height="30" rx="4" fill="#b8ccd8" opacity="0.4" />
           </svg>
 
-          {/* Location pins */}
-          {fieldEmployees.map((emp, i) => (
-            <div
-              key={i}
-              className="absolute flex flex-col items-center"
-              style={{ left: emp.left, top: emp.top, transform: "translate(-50%, -100%)" }}
-            >
-              <div className={`flex size-8 items-center justify-center rounded-full ${emp.color} shadow-md ring-2 ring-white`}>
-                <MapPin className="size-4 text-white" />
+          {fieldEmployees.map((emp, i) => {
+            const statusColor =
+              emp.status === "Bekerja"
+                ? "bg-green-100 text-green-700"
+                : emp.status === "Perjalanan"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-yellow-100 text-yellow-700"
+
+            return (
+              <div
+                key={i}
+                className="absolute flex flex-col items-center"
+                style={{ left: emp.left, top: emp.top, transform: "translate(-50%, -100%)" }}
+              >
+                <div className={`flex size-8 items-center justify-center rounded-full ${emp.color} shadow-md ring-2 ring-white`}>
+                  <MapPin className="size-4 text-white" />
+                </div>
+                <div className="mt-0.5 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow-sm whitespace-nowrap">
+                  {emp.name}
+                </div>
+                <span className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${statusColor}`}>
+                  {emp.status}
+                </span>
               </div>
-              <div className="mt-0.5 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow-sm whitespace-nowrap">
-                {emp.name}
-              </div>
-            </div>
-          ))}
+            )
+          })}
 
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white/70 to-transparent p-3">
             <p className="text-xs text-gray-500">
@@ -164,6 +213,17 @@ export default function AdminDashboardPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button className="h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-2">
+          <ListChecks className="size-5" />
+          Kelola Tugas
+        </Button>
+        <Button variant="outline" className="h-14 rounded-2xl border-gray-200 font-semibold gap-2">
+          <Users className="size-5" />
+          Data Teknisi
+        </Button>
       </div>
     </div>
   )
