@@ -3,11 +3,18 @@
 import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { RefreshCw, Home, ClipboardList, Clock, Gift } from "lucide-react"
+import { Lock, Home, ClipboardList, Clock, Gift } from "lucide-react"
 import { toast } from "sonner"
 import { employees, attendance } from "@/data/mock"
 import { authClient } from "@/lib/auth-client"
 import Link from "next/link"
+
+const navItems = [
+  { label: "Beranda", icon: Home, href: "/employee/dashboard" },
+  { label: "Tugas", icon: ClipboardList, href: "/employee/tasks" },
+  { label: "Riwayat", icon: Clock, href: "/employee/attendance-history" },
+  { label: "Hadiah", icon: Gift, href: "/employee/rewards" },
+]
 
 function formatDurationHMS(minutes: number): string {
   const h = Math.floor(minutes / 60)
@@ -15,13 +22,10 @@ function formatDurationHMS(minutes: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`
 }
 
-function LiveClock() {
-  const [time, setTime] = useState(new Date())
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(t)
-  }, [])
-  return <span>{format(time, "HH:mm:ss")}</span>
+function formatDurationLong(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `${h} jam ${m} menit`
 }
 
 function getGreeting(): string {
@@ -31,13 +35,6 @@ function getGreeting(): string {
   if (hour >= 15 && hour < 18) return "sore"
   return "malam"
 }
-
-const navItems = [
-  { label: "Beranda", icon: Home, href: "/employee/dashboard" },
-  { label: "Tugas", icon: ClipboardList, href: "/employee/tasks" },
-  { label: "Riwayat", icon: Clock, href: "/employee/history" },
-  { label: "Hadiah", icon: Gift, href: "/employee/rewards" },
-]
 
 export default function EmployeeDashboardPage() {
   const { data: session } = authClient.useSession()
@@ -50,7 +47,7 @@ export default function EmployeeDashboardPage() {
   const employee = employees.find((e) => e.id === currentUserId) || employees[2]
   const now = new Date()
   const todayStr = format(now, "yyyy-MM-dd")
-  const currentMonthLabel = format(now, "MMMM yyyy", { locale: id }).toUpperCase()
+  const currentMonthLabel = `BULAN INI (${format(now, "MMMM yyyy", { locale: id }).toUpperCase()})`
 
   const todayAttendance = useMemo(
     () => attendance.find((a) => a.employeeId === employee.id && a.date === todayStr),
@@ -116,116 +113,116 @@ export default function EmployeeDashboardPage() {
       : "not_checked_in"
 
   const statusBadge = {
-    not_checked_in: { label: "BELUM ABSEN", className: "bg-red-500 text-white" },
-    checked_in: { label: "SUDAH MASUK", className: "bg-green-500 text-white" },
-    checked_out: { label: "SUDAH PULANG", className: "bg-blue-500 text-white" },
+    not_checked_in: { label: "Belum Absen", className: "bg-red-500 text-white" },
+    checked_in: { label: "Sudah Masuk", className: "bg-green-500 text-white" },
+    checked_out: { label: "Sudah Pulang", className: "bg-blue-500 text-white" },
   }[attendanceStatus]
 
   const dailySalary = Math.round(employee.salary / 22)
-
   const checkInDisplay = checkInTime ? format(checkInTime, "HH:mm") : "-"
   const checkOutDisplay = isAlreadyCheckedOut
     ? format(new Date(checkInTime!.getTime() + workingMinutes * 60000), "HH:mm")
     : "-"
 
+  const toleranceExceeded = now.getHours() >= 9
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-lg font-bold text-gray-900">
-              Selamat {getGreeting()}, {employee.name}!
-            </p>
-            <p className="text-xs text-gray-500">
-              Jam Sistem Admin: <LiveClock />
-            </p>
-          </div>
-          <button
-            onClick={() => toast.success("Jam berhasil disinkronisasi!")}
-            className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600"
-          >
-            <RefreshCw className="size-3" />
-            SIMULASI SINKRON
-          </button>
-        </div>
-
         {/* Kehadiran Hari Ini */}
-        <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-4 space-y-3">
+        <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-gray-900">Kehadiran Hari Ini</span>
-            <span className={`rounded-full px-3 py-1 text-[10px] font-bold tracking-wider ${statusBadge.className}`}>
+            <span className="text-base font-bold text-gray-900 capitalize">kehadiran hari ini</span>
+            <span className={`rounded-lg px-3 py-1 text-xs font-bold ${statusBadge.className}`}>
               {statusBadge.label}
             </span>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">Jam Masuk</span>
-              <span className="text-sm font-semibold text-gray-900">{checkInDisplay}</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-gray-100 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Durasi Kerja Hari Ini</p>
+              <p className="mt-1 font-mono text-lg font-bold text-blue-600">
+                {formatDurationHMS(workingMinutes)}
+              </p>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">Jam Pulang</span>
-              <span className="text-sm font-semibold text-gray-900">{checkOutDisplay}</span>
-            </div>
-            <div className="border-t border-gray-100 pt-2 flex items-center justify-between">
-              <span className="text-sm text-gray-500">Total Hari Ini</span>
-              <div className="text-right">
-                <p className="text-sm font-bold text-primary font-mono">
-                  {formatDurationHMS(workingMinutes)}
-                </p>
-                <p className="text-xs text-gray-400">
-                  Rp {isAlreadyCheckedIn ? dailySalary.toLocaleString("id-ID") : "0"}
-                </p>
-              </div>
+            <div className="rounded-xl bg-gray-100 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Gaji Hari Ini</p>
+              <p className="mt-1 text-lg font-bold text-gray-900">
+                Rp {isAlreadyCheckedIn ? dailySalary.toLocaleString("id-ID") : "0"}
+              </p>
             </div>
           </div>
 
-          {!isAlreadyCheckedIn && (
-            <button
-              onClick={handleCheckIn}
-              className="w-full rounded-xl bg-green-600 py-3 text-sm font-bold text-white hover:bg-green-700"
-            >
-              Check In
-            </button>
-          )}
-          {isAlreadyCheckedIn && !isAlreadyCheckedOut && (
-            <button
-              onClick={handleCheckOut}
-              className="w-full rounded-xl bg-red-500 py-3 text-sm font-bold text-white hover:bg-red-600"
-            >
-              Check Out
-            </button>
-          )}
-          {isAlreadyCheckedOut && (
-            <div className="w-full rounded-xl bg-gray-100 py-3 text-center text-sm font-medium text-gray-500">
-              Anda sudah check out hari ini
+          <div className="border-t border-gray-100 pt-3 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">Jam Masuk</span>
+              <span className="font-semibold text-gray-900">{checkInDisplay}</span>
             </div>
-          )}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">Jam Pulang</span>
+              <span className="font-semibold text-gray-900">{checkOutDisplay}</span>
+            </div>
+          </div>
         </div>
 
         {/* Bulan Ini */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Hari Kerja</p>
-            <p className="text-xl font-bold text-primary">{monthPresent}</p>
-            <p className="text-[10px] text-gray-400">Hari</p>
+        <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+          <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">{currentMonthLabel}</p>
+
+          <div className="rounded-2xl border border-gray-200 p-4 text-center space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Kehadiran</p>
+            <p className="text-2xl font-bold text-green-600">{monthPresent} Hari</p>
           </div>
-          <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Total Gaji</p>
-            <p className="text-lg font-bold text-primary">Rp</p>
-            <p className="text-xs font-bold text-primary">{monthSalary.toLocaleString("id-ID")}</p>
+
+          <div className="rounded-2xl border border-gray-200 p-4 text-center space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Durasi Kerja</p>
+            <p className="text-2xl font-bold text-blue-600">{formatDurationLong(monthWorkingMinutes)}</p>
           </div>
-          <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Total Waktu</p>
-            <p className="text-xl font-bold text-primary">{Math.floor(monthWorkingMinutes / 60)}</p>
-            <p className="text-[10px] text-gray-400">Jam</p>
+
+          <div className="rounded-2xl border border-gray-200 p-4 text-center space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Gaji</p>
+            <p className="text-2xl font-bold text-green-600">
+              Rp {monthSalary.toLocaleString("id-ID")}
+            </p>
           </div>
         </div>
+
+        {/* Quick action button */}
+        {!isAlreadyCheckedIn && !toleranceExceeded && (
+          <button
+            onClick={handleCheckIn}
+            className="w-full rounded-2xl bg-green-600 py-3.5 text-sm font-bold text-white hover:bg-green-700 shadow-sm"
+          >
+            Check In Sekarang
+          </button>
+        )}
+        {isAlreadyCheckedIn && !isAlreadyCheckedOut && (
+          <button
+            onClick={handleCheckOut}
+            className="w-full rounded-2xl bg-red-500 py-3.5 text-sm font-bold text-white hover:bg-red-600 shadow-sm"
+          >
+            Check Out Sekarang
+          </button>
+        )}
+        {isAlreadyCheckedOut && (
+          <div className="w-full rounded-2xl bg-gray-100 py-3.5 text-center text-sm font-medium text-gray-500">
+            Anda sudah check out hari ini
+          </div>
+        )}
+
+        {/* Absen ditutup */}
+        {toleranceExceeded && !isAlreadyCheckedIn && (
+          <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white">
+              <Lock className="size-4 text-blue-600" />
+            </div>
+            <p className="text-sm font-semibold text-blue-900">Absen Masuk Ditutup (Melewati Toleransi)</p>
+          </div>
+        )}
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-50">
+      <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-50 shadow-lg">
         <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
           {navItems.map((item) => {
             const isActive = item.href === "/employee/dashboard"
