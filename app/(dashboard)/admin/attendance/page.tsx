@@ -19,6 +19,7 @@ import {
   Clock,
   AlertTriangle,
   Plane,
+  Snowflake,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -493,6 +494,7 @@ export default function AttendanceManagementPage() {
                     Keterlambatan
                   </SortableHead>
                   <TableHead>Persetujuan</TableHead>
+                  <TableHead>Status Gaji</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -500,7 +502,7 @@ export default function AttendanceManagementPage() {
                 {paginatedRows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={11}
+                      colSpan={12}
                       className="h-32 text-center text-muted-foreground"
                     >
                       Tidak ada data absensi untuk tanggal ini
@@ -638,6 +640,26 @@ export default function AttendanceManagementPage() {
                             <span className="text-muted-foreground">
                               -
                             </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {((row.attendance.status === "present" || row.attendance.status === "late") &&
+                            row.attendance.checkIn &&
+                            !row.attendance.checkOut) ? (
+                            <Badge
+                              variant="outline"
+                              className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                            >
+                              <Snowflake className="size-3" />
+                              Dibekukan
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            >
+                              Normal
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>

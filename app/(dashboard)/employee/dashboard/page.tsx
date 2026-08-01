@@ -17,6 +17,7 @@ import {
   CalendarOff,
   AlertTriangle,
   ChevronRight,
+  Snowflake,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -103,6 +104,8 @@ export default function EmployeeDashboardPage() {
   const [isAlreadyCheckedOut, setIsAlreadyCheckedOut] = useState(false)
   const [checkInTime, setCheckInTime] = useState<Date | null>(null)
   const [workingMinutes, setWorkingMinutes] = useState(0)
+  const [hasPendingTasks] = useState(true)
+  const [isInOffice, setIsInOffice] = useState(false)
 
   const employee = employees[1]
   const now = new Date()
@@ -288,6 +291,51 @@ export default function EmployeeDashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {hasPendingTasks && isInOffice && (
+        <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+          <CardContent className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                <Snowflake className="size-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                  Pembekuan Gaji Aktif
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-400">
+                  Anda memiliki tugas yang belum diselesaikan. Jam kerja dan gaji akan dibekukan sampai tugas selesai atau Anda keluar dari area kantor.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-blue-800 dark:text-blue-300">Tugas Pending:</p>
+              {tasks
+                .filter((t) => t.assignedTo === employee.id && (t.status === "pending" || t.status === "in_progress"))
+                .slice(0, 3)
+                .map((task) => (
+                  <div key={task.id} className="flex items-center gap-2 rounded-lg bg-blue-100/50 px-3 py-2 dark:bg-blue-900/20">
+                    <ListTodo className="size-3.5 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-medium text-blue-800 dark:text-blue-300">{task.title}</span>
+                    <span className="ml-auto text-xs text-blue-600 dark:text-blue-400">
+                      {categoryLabels[task.category]}
+                    </span>
+                  </div>
+                ))}
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsInOffice(!isInOffice)}
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm hover:bg-blue-50 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900/80"
+              >
+                <MapPin className="size-3" />
+                {isInOffice ? "Keluar dari Area Kantor" : "Masuk ke Area Kantor"}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <h2 className="text-lg font-semibold">Ringkasan Bulanan</h2>
 
