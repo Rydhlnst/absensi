@@ -47,6 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { tasks as initialTasks, employees } from "@/data/mock"
+import { authClient } from "@/lib/auth-client"
 import type { Task, TaskCategory, TaskPriority, TaskStatus } from "@/types"
 
 type SortField = "title" | "category" | "priority" | "status" | "workingDate" | "rewardPoints"
@@ -140,6 +141,7 @@ function formatRupiah(amount: number): string {
 }
 
 export default function TaskManagementPage() {
+  const { data: session } = authClient.useSession()
   const [taskList, setTaskList] = useState<Task[]>(initialTasks)
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
@@ -272,7 +274,7 @@ export default function TaskManagementPage() {
       longitude: parseFloat(form.longitude) || 0,
       description: form.description,
       assignedTo: form.assignedTo || null,
-      assignedBy: employees[0].id,
+      assignedBy: session?.user?.id || "",
       rewardPoints: parseInt(form.rewardPoints) || 0,
       attachments: [],
       notes: [],

@@ -42,9 +42,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { tasks } from "@/data/mock"
+import { authClient } from "@/lib/auth-client"
 import type { Task, TaskCategory, TaskPriority, TaskStatus } from "@/types"
-
-const CURRENT_EMPLOYEE_ID = "emp-003"
 
 const categoryColors: Record<TaskCategory, string> = {
   installation: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
@@ -212,14 +211,17 @@ function TaskCard({ task }: { task: Task }) {
 }
 
 export default function EmployeeTasksPage() {
+  const { data: session } = authClient.useSession()
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [sortBy, setSortBy] = useState<string>("priority")
   const [dialogOpen, setDialogOpen] = useState(false)
 
+  const CURRENT_EMPLOYEE_ID = session?.user?.id || ""
+
   const myTasks = useMemo(
     () => tasks.filter((t) => t.assignedTo === CURRENT_EMPLOYEE_ID),
-    []
+    [CURRENT_EMPLOYEE_ID]
   )
 
   const activeTasks = useMemo(

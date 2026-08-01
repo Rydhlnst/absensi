@@ -31,8 +31,7 @@ import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { employees } from "@/data/mock"
-
-const CURRENT_EMPLOYEE_ID = "emp-002"
+import { authClient } from "@/lib/auth-client"
 
 const roleLabels: Record<string, string> = {
   super_admin: "Super Admin",
@@ -66,6 +65,7 @@ function getPasswordStrength(password: string): { label: string; color: string; 
 }
 
 export default function EmployeeProfilePage() {
+  const { data: session } = authClient.useSession()
   const [isEditing, setIsEditing] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -78,6 +78,8 @@ export default function EmployeeProfilePage() {
   })
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system")
   const [compactMode, setCompactMode] = useState(false)
+
+  const CURRENT_EMPLOYEE_ID = session?.user?.id || ""
 
   const [formValues, setFormValues] = useState({
     name: "",

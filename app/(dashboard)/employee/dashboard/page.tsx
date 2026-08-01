@@ -26,6 +26,7 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { employees, tasks, attendance } from "@/data/mock"
+import { authClient } from "@/lib/auth-client"
 
 function getGreeting(hour: number): string {
   if (hour < 11) return "Selamat Pagi"
@@ -100,6 +101,7 @@ const statusColors: Record<string, string> = {
 }
 
 export default function EmployeeDashboardPage() {
+  const { data: session } = authClient.useSession()
   const [isAlreadyCheckedIn, setIsAlreadyCheckedIn] = useState(false)
   const [isAlreadyCheckedOut, setIsAlreadyCheckedOut] = useState(false)
   const [checkInTime, setCheckInTime] = useState<Date | null>(null)
@@ -107,7 +109,8 @@ export default function EmployeeDashboardPage() {
   const [hasPendingTasks] = useState(true)
   const [isInOffice, setIsInOffice] = useState(false)
 
-  const employee = employees[1]
+  const currentUserId = session?.user?.id || ""
+  const employee = employees.find(e => e.id === currentUserId) || employees[0]
   const now = new Date()
   const todayStr = format(now, "yyyy-MM-dd")
   const currentHour = now.getHours()

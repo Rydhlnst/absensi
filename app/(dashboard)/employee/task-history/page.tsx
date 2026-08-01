@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { tasks } from "@/data/mock"
+import { authClient } from "@/lib/auth-client"
 import type { TaskCategory, TaskStatus } from "@/types"
 
 const categoryColor: Record<TaskCategory, string> = {
@@ -47,8 +48,6 @@ const statusLabel: Record<TaskStatus, string> = {
   on_hold: "Ditunda",
 }
 
-const currentEmployeeId = "emp-003"
-
 function formatDuration(startedAt: string | null, completedAt: string | null): string {
   if (!startedAt || !completedAt) return "N/A"
   const diff = new Date(completedAt).getTime() - new Date(startedAt).getTime()
@@ -73,10 +72,13 @@ function formatRupiah(amount: number): string {
 }
 
 export default function TaskHistoryPage() {
+  const { data: session } = authClient.useSession()
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [dateStart, setDateStart] = useState("")
   const [dateEnd, setDateEnd] = useState("")
+
+  const currentEmployeeId = session?.user?.id || ""
 
   const myTasks = useMemo(() => {
     return tasks

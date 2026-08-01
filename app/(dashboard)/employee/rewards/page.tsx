@@ -23,9 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { employees, rewards, rewardItems } from "@/data/mock"
+import { authClient } from "@/lib/auth-client"
 import type { RewardType } from "@/types"
-
-const CURRENT_EMPLOYEE_ID = "emp-002"
 
 const rewardTypeConfig: Record<RewardType, { label: string; className: string }> = {
   earned: {
@@ -68,8 +67,10 @@ function getInitials(name: string): string {
 }
 
 export default function EmployeeRewardsPage() {
+  const { data: session } = authClient.useSession()
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
 
+  const CURRENT_EMPLOYEE_ID = session?.user?.id || ""
   const employee = employees.find((e) => e.id === CURRENT_EMPLOYEE_ID)!
 
   const myRewards = useMemo(
