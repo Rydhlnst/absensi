@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
@@ -21,6 +22,7 @@ import {
   AlertTriangle,
   Bell,
   CheckSquare,
+  MapPin,
 } from "lucide-react"
 import {
   BarChart,
@@ -519,6 +521,85 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="size-5" />
+            Pemantauan Lokasi Real-time
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex size-2 rounded-full bg-green-500"></span>
+            </span>
+            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+              Live
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="relative w-full overflow-hidden rounded-xl border bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900" style={{ height: "320px" }}>
+            <div className="absolute inset-0 opacity-20">
+              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-400" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+              </svg>
+            </div>
+            <div className="absolute left-[15%] top-[25%] flex flex-col items-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
+                <MapPin className="size-4 text-white" />
+              </div>
+              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Budi S.</span>
+            </div>
+            <div className="absolute left-[35%] top-[40%] flex flex-col items-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
+                <MapPin className="size-4 text-white" />
+              </div>
+              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Eko P.</span>
+            </div>
+            <div className="absolute left-[55%] top-[20%] flex flex-col items-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
+                <MapPin className="size-4 text-white" />
+              </div>
+              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Gilang R.</span>
+            </div>
+            <div className="absolute left-[70%] top-[50%] flex flex-col items-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
+                <MapPin className="size-4 text-white" />
+              </div>
+              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Indra K.</span>
+            </div>
+            <div className="absolute left-[25%] top-[65%] flex flex-col items-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
+                <MapPin className="size-4 text-white" />
+              </div>
+              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Lukman H.</span>
+            </div>
+            <div className="absolute left-[60%] top-[70%] flex flex-col items-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
+                <MapPin className="size-4 text-white" />
+              </div>
+              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Joko W.</span>
+            </div>
+            <div className="absolute left-[80%] top-[30%] flex flex-col items-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 shadow-lg ring-2 ring-white dark:ring-slate-800">
+                <MapPin className="size-4 text-white" />
+              </div>
+              <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium shadow dark:bg-slate-700/90">Putri A.</span>
+            </div>
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/80 to-transparent p-3 dark:from-slate-900/80">
+              <p className="text-xs text-muted-foreground">
+                7 karyawan aktif dilapangan &bull; Update terakhir: baru saja
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { format } from "date-fns"
 import { id } from "date-fns/locale/id"
-import { Search, Bell, Sun, Moon, LogOut, ChevronDown } from "lucide-react"
+import { Search, Bell, Sun, Moon, LogOut, ChevronDown, Clock } from "lucide-react"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
@@ -49,6 +49,54 @@ function LiveClock() {
     <span className="text-sm text-muted-foreground hidden md:inline">
       {format(time, "EEEE, dd MMMM yyyy • HH:mm:ss", { locale: id })}
     </span>
+  )
+}
+
+function TimeSimulationBar() {
+  const [simActive, setSimActive] = useState(false)
+  const [time, setTime] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  return (
+    <div className="w-full border-b bg-amber-50 dark:bg-amber-950/30">
+      <div className="flex flex-wrap items-center gap-3 px-4 py-2">
+        <div className="flex items-center gap-2">
+          <Clock className="size-4 text-amber-600 dark:text-amber-400" />
+          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">Simulasi Waktu:</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setSimActive(!simActive)}
+          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+            simActive ? "bg-primary" : "bg-input"
+          }`}
+        >
+          <span
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+              simActive ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
+        {simActive ? (
+          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            ON (Simulasi)
+          </span>
+        ) : (
+          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+            OFF (Waktu Asli)
+          </span>
+        )}
+      </div>
+      <div className="px-4 pb-2">
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          Jam Sistem: {format(time, "EEEE, dd MMMM yyyy", { locale: id })} - {format(time, "HH:mm:ss")}
+        </p>
+      </div>
+    </div>
   )
 }
 
@@ -177,6 +225,8 @@ export default function DashboardLayout({
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
+
+          <TimeSimulationBar />
 
           <main className="flex-1 overflow-x-hidden p-3 pb-20 sm:p-4 sm:pb-4 md:p-6 md:pb-6">
             {children}

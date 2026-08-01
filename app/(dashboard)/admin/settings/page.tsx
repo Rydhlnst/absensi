@@ -15,6 +15,8 @@ import {
   Upload,
   Trash2,
   Snowflake,
+  Smartphone,
+  Shield,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -107,6 +109,7 @@ export default function SettingsPage() {
   const [companyEmail, setCompanyEmail] = useState(companySetting.email)
 
   const [taskSalaryFreeze, setTaskSalaryFreeze] = useState(true)
+  const [deviceBinding, setDeviceBinding] = useState(false)
 
   const handleAddHoliday = () => {
     if (!newHolidayDate || !newHolidayName) return
@@ -174,6 +177,10 @@ export default function SettingsPage() {
           <TabsTrigger value="salary_freeze">
             <Snowflake className="size-4" />
             Pembekuan Gaji
+          </TabsTrigger>
+          <TabsTrigger value="security">
+            <Shield className="size-4" />
+            Keamanan & Gaji
           </TabsTrigger>
         </TabsList>
 
@@ -637,6 +644,110 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Pembekuan Gaji Berbasis Tugas (Task Salary Freeze)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Aktifkan Pembekuan Gaji</p>
+                  <p className="text-sm text-muted-foreground">
+                    Jika aktif, jam kerja & gaji karyawan otomatis dibekukan (paused) jika masih ada tugas namun karyawan berada di geofence kantor. Jika dimatikan, jam kerja & gaji berjalan normal tanpa dibekukan.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTaskSalaryFreeze(!taskSalaryFreeze)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    taskSalaryFreeze ? "bg-primary" : "bg-input"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                      taskSalaryFreeze ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <Card className="bg-muted/50">
+                <CardContent className="py-4">
+                  <h4 className="font-medium mb-2">Kondisi Pembekuan Gaji:</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Karyawan memiliki tugas dengan status <strong>pending</strong> atau <strong>in_progress</strong></li>
+                    <li>• Karyawan berada di dalam geofence kantor (radius {companySetting.gpsRadius}m)</li>
+                    <li>• Jam kerja dan gaji akan <strong>dibekukan</strong> sampai tugas diselesaikan atau karyawan keluar dari geofence</li>
+                    <li>• Jika toggle dimatikan, semua berjalan normal tanpa pembekuan</li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-end">
+                <Button>
+                  <Save className="size-4" />
+                  Simpan
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="size-5" />
+                PENGIKATAN PERANGKAT (DEVICE BINDING)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Aktifkan Pengikatan Perangkat</p>
+                  <p className="text-sm text-muted-foreground">
+                    Jika aktif, akun karyawan akan otomatis dikaitkan ke perangkat HP pertama yang digunakan untuk absensi. Karyawan tidak bisa absen menggunakan perangkat HP lain kecuali di-reset oleh Admin.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeviceBinding(!deviceBinding)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    deviceBinding ? "bg-primary" : "bg-input"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                      deviceBinding ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <Card className="bg-muted/50">
+                <CardContent className="py-4">
+                  <h4 className="font-medium mb-2">Cara Kerja Device Binding:</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Saat pertama kali karyawan absen, Device ID HP akan tercatat otomatis</li>
+                    <li>• Selanjutnya, hanya Device ID yang sama yang diperbolehkan untuk absensi</li>
+                    <li>• Jika karyawan ingin berganti HP, Admin harus reset Device ID terlebih dahulu</li>
+                    <li>• Reset dapat dilakukan dari halaman manajemen karyawan</li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-end">
+                <Button>
+                  <Save className="size-4" />
+                  Simpan
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Snowflake className="size-5" />
+                PEMBEKUAN GAJI BERBASIS TUGAS (TASK SALARY FREEZE)
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start justify-between gap-4 rounded-lg border p-4">

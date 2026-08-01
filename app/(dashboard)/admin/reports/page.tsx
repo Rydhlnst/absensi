@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import {
   Download,
+  Share,
   FileText,
   FileSpreadsheet,
   Calendar,
@@ -17,7 +18,10 @@ import {
   XCircle,
   Timer,
   Coins,
+  Trash2,
+  ScrollText,
 } from "lucide-react"
+import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -39,6 +43,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { employees, attendance, tasks, salaries, rewards, companySetting } from "@/data/mock"
 import type { AttendanceStatus, TaskCategory, SalaryStatus, RewardType } from "@/types"
 
@@ -234,6 +249,8 @@ export default function ReportsPage() {
     return { rows, totalEarned, totalRedeemed, activePoints }
   }, [rewardStartDate, rewardEndDate])
 
+  const [deleteAllLogsOpen, setDeleteAllLogsOpen] = useState(false)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -242,17 +259,21 @@ export default function ReportsPage() {
           <p className="text-muted-foreground">Lihat dan ekspor laporan perusahaan</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <FileText className="size-4" />
-            Export PDF
-          </Button>
-          <Button variant="outline" size="sm">
-            <FileSpreadsheet className="size-4" />
-            Export Excel
-          </Button>
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => toast.success("Laporan berhasil diexport!")}
+          >
             <Download className="size-4" />
-            Export CSV
+            Cetak PDF
+          </Button>
+          <Button
+            size="sm"
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            onClick={() => toast.success("Laporan berhasil diexport!")}
+          >
+            <Share className="size-4" />
+            Ekspor Excel
           </Button>
         </div>
       </div>
@@ -276,6 +297,10 @@ export default function ReportsPage() {
           <TabsTrigger value="rewards">
             <Award className="size-4" />
             Laporan Reward
+          </TabsTrigger>
+          <TabsTrigger value="logs">
+            <ScrollText className="size-4" />
+            Log & Laporan
           </TabsTrigger>
         </TabsList>
 
@@ -845,6 +870,131 @@ export default function ReportsPage() {
                 Export Laporan Reward
               </Button>
             </div>
+          </Card>
+        </TabsContent>
+        <TabsContent value="logs" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Log & Laporan</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toast.success("Laporan berhasil diexport!")}
+                  >
+                    <Download className="size-4" />
+                    Cetak PDF
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => toast.success("Laporan berhasil diexport!")}
+                  >
+                    <Share className="size-4" />
+                    Ekspor Excel
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Tanggal Mulai</label>
+                  <Input type="date" defaultValue="2026-07-01" className="w-44" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Tanggal Akhir</label>
+                  <Input type="date" defaultValue="2026-07-31" className="w-44" />
+                </div>
+              </div>
+
+              <div className="rounded-xl border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Waktu</TableHead>
+                      <TableHead>Aktivitas</TableHead>
+                      <TableHead>Pengguna</TableHead>
+                      <TableHead>Detail</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="text-xs">01 Jul 2026, 08:15</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Check In</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">Ahmad Rizki</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">Absensi harian tercatat</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="text-xs">01 Jul 2026, 09:00</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Tugas Diterima</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">Ahmad Rizki</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">Instalasi #1234 diterima</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="text-xs">01 Jul 2026, 17:30</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Check Out</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">Ahmad Rizki</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">Durasi kerja: 9 jam 15 menit</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="text-xs">02 Jul 2026, 08:05</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Check In</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">Siti Nurhaliza</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">Absensi harian tercatat</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="text-xs">02 Jul 2026, 14:20</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Tugas Selesai</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">Siti Nurhaliza</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">Maintenance #1235 selesai</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex justify-between border-t px-0 pt-4">
+                <AlertDialog open={deleteAllLogsOpen} onOpenChange={setDeleteAllLogsOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="size-4" />
+                      Hapus Semua Log
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Hapus Semua Log</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Apakah Anda yakin ingin menghapus semua log? Tindakan ini tidak dapat dibatalkan.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={() => {
+                          toast.success("Semua log berhasil dihapus!")
+                          setDeleteAllLogsOpen(false)
+                        }}
+                      >
+                        Hapus
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

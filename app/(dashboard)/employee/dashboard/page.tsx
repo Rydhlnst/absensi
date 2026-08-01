@@ -18,7 +18,9 @@ import {
   AlertTriangle,
   ChevronRight,
   Snowflake,
+  RefreshCw,
 } from "lucide-react"
+import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -269,6 +271,16 @@ export default function EmployeeDashboardPage() {
               </p>
             </div>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50"
+            onClick={() => toast.success("Jam berhasil disinkronisasi dengan server!")}
+          >
+            <RefreshCw className="size-4" />
+            SIMULASI SINKRON
+          </Button>
 
           <div className="flex gap-3">
             {!isAlreadyCheckedIn && (

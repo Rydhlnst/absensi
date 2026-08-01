@@ -16,6 +16,9 @@ import {
   Loader2,
   User,
   Lock,
+  DollarSign,
+  Smartphone,
+  Minus,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -60,6 +63,7 @@ interface EmployeeForm {
   password: string
   department: string
   position: string
+  hourlyRate: string
 }
 
 const defaultForm: EmployeeForm = {
@@ -69,6 +73,43 @@ const defaultForm: EmployeeForm = {
   password: "",
   department: "",
   position: "",
+  hourlyRate: "",
+}
+
+const mockHourlyRates: Record<string, number> = {
+  "emp-003": 10000,
+  "emp-005": 12000,
+  "emp-007": 9000,
+  "emp-009": 11000,
+  "emp-012": 10000,
+  "emp-014": 13000,
+  "emp-016": 9500,
+  "emp-017": 10500,
+  "emp-019": 11500,
+  "emp-021": 9000,
+  "emp-024": 10000,
+  "emp-025": 8500,
+  "emp-027": 11000,
+  "emp-028": 8000,
+  "emp-030": 10000,
+}
+
+const mockDeviceIds: Record<string, string> = {
+  "emp-003": "device-mob-8f3a",
+  "emp-005": "device-mob-2b7c",
+  "emp-007": "device-mob-9d1e",
+  "emp-009": "device-mob-4a6f",
+  "emp-012": "device-mob-7c2d",
+  "emp-014": "device-mob-1e5b",
+  "emp-016": "device-mob-6f8a",
+  "emp-017": "device-mob-3d9c",
+  "emp-019": "device-mob-5b4e",
+  "emp-021": "device-mob-8a1f",
+  "emp-024": "device-mob-2c7d",
+  "emp-025": "device-mob-9e3b",
+  "emp-027": "device-mob-4f6a",
+  "emp-028": "device-mob-7d2c",
+  "emp-030": "device-mob-1b5e",
 }
 
 export default function AdminEmployeesPage() {
@@ -82,6 +123,13 @@ export default function AdminEmployeesPage() {
   const [form, setForm] = useState<EmployeeForm>(defaultForm)
   const [formLoading, setFormLoading] = useState(false)
   const [formError, setFormError] = useState("")
+  const [pointsMap, setPointsMap] = useState<Record<string, number>>(() => {
+    const map: Record<string, number> = {}
+    employees.forEach((e) => {
+      map[e.id] = e.rewardPoints
+    })
+    return map
+  })
 
   const filteredEmployees = useMemo(() => {
     return employeeList.filter(
@@ -115,6 +163,7 @@ export default function AdminEmployeesPage() {
       password: "",
       department: emp.department,
       position: emp.position,
+      hourlyRate: String(mockHourlyRates[emp.id] || 0),
     })
     setFormError("")
     setDialogOpen(true)
@@ -249,17 +298,18 @@ export default function AdminEmployeesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nama</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Departemen</TableHead>
                   <TableHead>Posisi</TableHead>
+                  <TableHead className="text-right">Tarif/Jam</TableHead>
+                  <TableHead>Device ID</TableHead>
+                  <TableHead className="text-center">Poin</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[120px]">Aksi</TableHead>
+                  <TableHead className="w-[140px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedEmployees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       Tidak ada data ditemukan.
                     </TableCell>
                   </TableRow>
@@ -267,13 +317,58 @@ export default function AdminEmployeesPage() {
                   paginatedEmployees.map((emp) => (
                     <TableRow key={emp.id}>
                       <TableCell className="font-medium">
-                        {emp.name}
+                        <div>
+                          <p>{emp.name}</p>
+                          <p className="text-xs text-muted-foreground">{emp.department}</p>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {emp.email}
-                      </TableCell>
-                      <TableCell>{emp.department}</TableCell>
                       <TableCell>{emp.position}</TableCell>
+                      <TableCell className="text-right text-sm">
+                        {mockHourlyRates[emp.id]
+                          ? `Rp ${mockHourlyRates[emp.id].toLocaleString("id-ID")}/jam`
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {mockDeviceIds[emp.id] ? (
+                          <div className="flex items-center gap-1.5">
+                            <Smartphone className="size-3 text-muted-foreground" />
+                            <span className="text-xs font-mono">{mockDeviceIds[emp.id]}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Belum terikat</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() =>
+                              setPointsMap((prev) => ({
+                                ...prev,
+                                [emp.id]: Math.max(0, (prev[emp.id] || 0) - 10),
+                              }))
+                            }
+                          >
+                            <Minus className="size-3" />
+                          </Button>
+                          <span className="min-w-[32px] text-center text-sm font-medium">
+                            {pointsMap[emp.id] || 0}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() =>
+                              setPointsMap((prev) => ({
+                                ...prev,
+                                [emp.id]: (prev[emp.id] || 0) + 10,
+                              }))
+                            }
+                          >
+                            <Plus className="size-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -292,6 +387,16 @@ export default function AdminEmployeesPage() {
                           >
                             <Pencil className="size-4" />
                           </Button>
+                          {mockDeviceIds[emp.id] && (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-destructive hover:text-destructive"
+                              title="Reset HP (Device ID)"
+                            >
+                              <Smartphone className="size-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -461,6 +566,25 @@ export default function AdminEmployeesPage() {
                   }
                   disabled={formLoading}
                   required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="emp-hourlyRate">Tarif/Jam (Rp)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="emp-hourlyRate"
+                  type="number"
+                  placeholder="Contoh: 10000"
+                  className="pl-10"
+                  value={form.hourlyRate}
+                  onChange={(e) =>
+                    handleFormChange("hourlyRate", e.target.value)
+                  }
+                  disabled={formLoading}
+                  min={0}
                 />
               </div>
             </div>
