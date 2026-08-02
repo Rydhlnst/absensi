@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { format } from "date-fns"
 import { id } from "date-fns/locale/id"
-import { Bell, LogOut, Clock, ChevronDown, User as UserIcon, Settings } from "lucide-react"
+import { Bell, LogOut, Clock, RotateCw, User as UserIcon, Settings } from "lucide-react"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
@@ -214,7 +214,6 @@ export default function DashboardLayout({
                     <Clock className="size-3" />
                     Jam Admin: <LiveClock />
                   </span>
-                  <ChevronDown className="size-4 text-muted-foreground shrink-0" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -231,6 +230,14 @@ export default function DashboardLayout({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9 shrink-0 text-muted-foreground"
+              onClick={() => window.location.reload()}
+            >
+              <RotateCw className="size-4" />
+            </Button>
           </header>
 
           <main className="flex-1 overflow-x-hidden overflow-y-auto pb-20">
@@ -273,7 +280,6 @@ export default function DashboardLayout({
                     <span className="text-sm font-medium leading-none">{user.name}</span>
                     <span className="text-xs text-muted-foreground leading-none mt-1">{roleName}</span>
                   </div>
-                  <ChevronDown className="size-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
