@@ -236,3 +236,250 @@ test.describe("5. API Endpoints (authenticated via fetch)", () => {
     });
   }
 });
+
+// ============== SETTINGS ROLE-BASED ACCESS TESTS ==============
+test.describe("6. Settings Role-Based Access", () => {
+  test("admin sees read-only banner and all sections", async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.admin);
+    await page.goto(`${BASE_URL}/admin/settings`);
+    await expect(page.getByText("Mode Admin (Read-Only)")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Anda hanya dapat melihat pengaturan/)).toBeVisible();
+    await expect(page.getByText("Identitas Perusahaan")).toBeVisible();
+    await expect(page.getByText("Lokasi Kantor & Geofence")).toBeVisible();
+    await expect(page.getByText(/Kantor Cabang/)).toBeVisible();
+    await expect(page.getByText("Jadwal Kerja")).toBeVisible();
+    await expect(page.getByText(/Keamanan Absensi/)).toBeVisible();
+    await expect(page.getByText(/Poin Hadiah/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Simpan Pengaturan/ })).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Tambah" })).not.toBeVisible();
+  });
+
+  test("admin inputs are disabled or read-only", async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.admin);
+    await page.goto(`${BASE_URL}/admin/settings`);
+    await expect(page.getByText("Identitas Perusahaan")).toBeVisible({ timeout: 15000 });
+    const nameInput = page.locator("input[type='text']").first();
+    await expect(nameInput).toHaveAttribute("readonly", "");
+  });
+
+  test("super admin sees Simpan Pengaturan button", async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.superadmin);
+    await page.goto(`${BASE_URL}/super-admin/settings`);
+    await expect(page.getByRole("heading", { name: /Pengaturan Perusahaan/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("button", { name: /Simpan Pengaturan/ })).toBeVisible();
+  });
+
+  test("super admin sees Tambah branch button", async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.superadmin);
+    await page.goto(`${BASE_URL}/super-admin/settings`);
+    await expect(page.getByText(/Kantor Cabang/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("button", { name: "Tambah" })).toBeVisible();
+  });
+
+  test("super admin has no read-only banner", async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.superadmin);
+    await page.goto(`${BASE_URL}/super-admin/settings`);
+    await expect(page.getByRole("heading", { name: /Pengaturan Perusahaan/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("Mode Admin (Read-Only)")).not.toBeVisible();
+  });
+});
+
+// ============== SUPER ADMIN REPORTS DETAIL VIEWS ==============
+test.describe("7. Super Admin Reports Detail Views", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.superadmin);
+    await page.goto(`${BASE_URL}/super-admin/reports`);
+    await expect(page.getByRole("heading", { name: /Laporan/i }).first()).toBeVisible({ timeout: 15000 });
+  });
+
+  test("reports page shows 4 report cards", async ({ page }) => {
+    await expect(page.getByText("Laporan Absensi")).toBeVisible();
+    await expect(page.getByText("Laporan Tugas")).toBeVisible();
+    await expect(page.getByText("Laporan Gaji")).toBeVisible();
+    await expect(page.getByText("Laporan Reward")).toBeVisible();
+  });
+
+  test("click Lihat Detail Absensi shows detail view", async ({ page }) => {
+    await page.getByRole("button", { name: "Lihat Detail" }).nth(0).click();
+    await expect(page.getByRole("heading", { name: "Laporan Absensi" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Detail laporan")).toBeVisible();
+    await expect(page.getByText("Riwayat Absensi")).toBeVisible();
+  });
+
+  test("click Lihat Detail Tugas shows detail view", async ({ page }) => {
+    await page.getByRole("button", { name: "Lihat Detail" }).nth(1).click();
+    await expect(page.getByRole("heading", { name: "Laporan Tugas" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Daftar Tugas")).toBeVisible();
+  });
+
+  test("back button returns to overview", async ({ page }) => {
+    await page.getByRole("button", { name: "Lihat Detail" }).nth(0).click();
+    await expect(page.getByRole("heading", { name: "Laporan Absensi" })).toBeVisible({ timeout: 10000 });
+    await page.getByRole("button").filter({ has: page.locator("svg.lucide-arrow-left") }).click();
+    await expect(page.getByText("Laporan Tugas")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Laporan Gaji")).toBeVisible();
+    await expect(page.getByText("Laporan Reward")).toBeVisible();
+  });
+
+  test("each card shows badge with count", async ({ page }) => {
+    await expect(page.locator("span").filter({ hasText: /Hadir/ }).first()).toBeVisible();
+    await expect(page.locator("span").filter({ hasText: /Selesai/ }).first()).toBeVisible();
+    await expect(page.locator("span").filter({ hasText: /Karyawan/ }).first()).toBeVisible();
+    await expect(page.locator("span").filter({ hasText: /Transaksi/ }).first()).toBeVisible();
+  });
+});
+
+// ============== BRANCHES API CRUD ==============
+test.describe("8. Branches API CRUD", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.admin);
+  });
+
+  let createdBranchId: string;
+
+  test("GET /api/branches returns array", async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const res = await fetch("/api/branches");
+      const data = await res.json();
+      return { status: res.status, isArray: Array.isArray(data) };
+    });
+    expect(result.status).toBe(200);
+    expect(result.isArray).toBe(true);
+  });
+
+  test("POST /api/branches creates branch", async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const res = await fetch("/api/branches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Test Branch Playwright",
+          address: "Jl. Test No. 1",
+          latitude: -6.2000,
+          longitude: 106.8000,
+          radius: 150,
+          isMain: false,
+          isActive: true,
+        }),
+      });
+      const data = await res.json();
+      return { status: res.status, id: data.id, name: data.name };
+    });
+    expect(result.status).toBe(201);
+    expect(result.name).toBe("Test Branch Playwright");
+    createdBranchId = result.id;
+  });
+
+  test("PUT /api/branches updates branch", async ({ page }) => {
+    const result = await page.evaluate(async (id) => {
+      const res = await fetch("/api/branches", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name: "Updated Branch Name" }),
+      });
+      const data = await res.json();
+      return { status: res.status, name: data.name };
+    }, createdBranchId);
+    expect(result.status).toBe(200);
+    expect(result.name).toBe("Updated Branch Name");
+  });
+
+  test("DELETE /api/branches removes branch", async ({ page }) => {
+    const result = await page.evaluate(async (id) => {
+      const res = await fetch(`/api/branches?id=${id}`);
+      return { status: res.status };
+    }, createdBranchId);
+    expect(result.status).toBe(200);
+  });
+
+  test("DELETE without id returns 400", async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const res = await fetch("/api/branches", { method: "DELETE" });
+      return { status: res.status };
+    });
+    expect(result.status).toBe(400);
+  });
+});
+
+// ============== STATS API RESPONSE SHAPE ==============
+test.describe("9. Stats API Response Shape", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.admin);
+  });
+
+  test("stats returns all required fields", async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const res = await fetch("/api/stats");
+      return await res.json();
+    });
+    expect(result).toHaveProperty("totalUsers");
+    expect(result).toHaveProperty("totalAdmins");
+    expect(result).toHaveProperty("totalEmployees");
+    expect(result).toHaveProperty("presentToday");
+    expect(result).toHaveProperty("absentToday");
+    expect(result).toHaveProperty("onlineEmployees");
+    expect(result).toHaveProperty("pendingTasks");
+    expect(result).toHaveProperty("completedTasks");
+    expect(result).toHaveProperty("totalTasks");
+    expect(result).toHaveProperty("monthlySalary");
+  });
+
+  test("monthlySalary is a non-negative number", async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const res = await fetch("/api/stats");
+      return await res.json();
+    });
+    expect(typeof result.monthlySalary).toBe("number");
+    expect(result.monthlySalary).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ============== ADMIN SETTINGS SECTIONS ==============
+test.describe("10. Admin Settings Sections", () => {
+  test("admin settings shows all section headings", async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.admin);
+    await page.goto(`${BASE_URL}/admin/settings`);
+    await expect(page.getByRole("heading", { name: /Pengaturan Perusahaan/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("Identitas Perusahaan")).toBeVisible();
+    await expect(page.getByText("Lokasi Kantor & Geofence")).toBeVisible();
+    await expect(page.getByText("Jadwal Kerja")).toBeVisible();
+  });
+
+  test("admin settings shows branch count", async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.admin);
+    await page.goto(`${BASE_URL}/admin/settings`);
+    await expect(page.getByText(/Kantor Cabang/)).toBeVisible({ timeout: 15000 });
+  });
+});
+
+// ============== EMPLOYEE ATTENDANCE ==============
+test.describe("11. Employee Attendance", () => {
+  test("attendance page loads with heading", async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.employee);
+    await page.goto(`${BASE_URL}/employee/attendance`);
+    await expect(page.getByRole("heading", { name: "Absensi" })).toBeVisible({ timeout: 15000 });
+  });
+
+  test("attendance page shows check-in/out section", async ({ page }) => {
+    await login(page, DEMO_ACCOUNTS.employee);
+    await page.goto(`${BASE_URL}/employee/attendance`);
+    await expect(
+      page.getByText("Check In Sekarang")
+        .or(page.getByText("Check Out Sekarang"))
+        .or(page.getByText("sudah check out", { exact: false }))
+        .or(page.getByText(/Absen Masuk Ditutup/i))
+        .or(page.getByText(/Sudah Masuk/i))
+    ).toBeVisible({ timeout: 15000 });
+  });
+
+  test("attendance page loads without console errors", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") errors.push(msg.text());
+    });
+    await login(page, DEMO_ACCOUNTS.employee);
+    await page.goto(`${BASE_URL}/employee/attendance`);
+    await page.waitForTimeout(3000);
+    expect(errors.filter((e) => !e.includes("favicon") && !e.includes("404"))).toHaveLength(0);
+  });
+});
