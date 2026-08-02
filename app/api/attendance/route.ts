@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(attendance.checkIn));
 
     return NextResponse.json(records);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch attendance" }, { status: 500 });
   }
 }
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json(record[0], { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to create attendance" }, { status: 500 });
   }
 }
@@ -79,7 +79,7 @@ export async function PUT(request: NextRequest) {
     }
 
     return NextResponse.json(updated[0]);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to update attendance" }, { status: 500 });
   }
 }
@@ -103,7 +103,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json({ message: "Attendance deleted" });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to delete attendance" }, { status: 500 });
   }
 }

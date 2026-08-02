@@ -53,9 +53,12 @@ export default function Header({ user }: HeaderProps) {
   }
 
   useEffect(() => {
-    setMounted(true)
+    const id = requestAnimationFrame(() => setMounted(true))
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => clearInterval(timer)
+    return () => {
+      cancelAnimationFrame(id)
+      clearInterval(timer)
+    }
   }, [])
 
   const formattedDate = format(currentTime, "EEEE, d MMMM yyyy", { locale: id })

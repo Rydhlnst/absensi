@@ -17,6 +17,19 @@ import { authClient, signOut } from "@/lib/auth-client"
 import { getAvatarUrl } from "@/lib/utils"
 import type { Role, User } from "@/types"
 
+interface SessionUserExtended {
+  id: string
+  name: string
+  email: string
+  image?: string | null
+  phone?: string
+  role?: Role
+  department?: string
+  position?: string
+  nik?: string
+  createdAt?: Date | string
+}
+
 function LoadingScreen() {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-gray-50">
@@ -110,7 +123,12 @@ export default function DashboardLayout({
   const { data: session, isPending } = authClient.useSession()
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    if (!mounted) {
+      const id = requestAnimationFrame(() => setMounted(true))
+      return () => cancelAnimationFrame(id)
+    }
+  }, [mounted])
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -121,22 +139,24 @@ export default function DashboardLayout({
   if (!mounted || isPending) return <LoadingScreen />
   if (!session) return null
 
+  const sessionUser = session.user as SessionUserExtended
+
   const user: User = {
     id: session.user.id,
     name: session.user.name || "",
     email: session.user.email || "",
-    phone: (session.user as any).phone || "",
-    role: ((session.user as any).role || "employee") as Role,
+    phone: sessionUser.phone || "",
+    role: (sessionUser.role || "employee") as Role,
     avatar: session.user.image || null,
-    department: (session.user as any).department || "",
-    position: (session.user as any).position || "",
+    department: sessionUser.department || "",
+    position: sessionUser.position || "",
     status: "active" as const,
     joinDate: session.user.createdAt instanceof Date
       ? session.user.createdAt.toISOString()
       : String(session.user.createdAt),
     salary: 0,
     address: "",
-    nik: (session.user as any).nik || "",
+    nik: sessionUser.nik || "",
     npwp: "",
     bankName: "",
     bankAccount: "",

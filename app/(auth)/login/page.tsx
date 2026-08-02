@@ -22,8 +22,8 @@ import { Separator } from "@/components/ui/separator"
 import { authClient } from "@/lib/auth-client"
 
 const demoAccounts = [
-  { label: "Super Admin", email: "ahmad.pratama@mitrasolusindo.co.id", password: "password123" },
-  { label: "Admin", email: "siti.nurhaliza@mitrasolusindo.co.id", password: "password123" },
+  { label: "Super Admin", email: "superadmin@mitrasolusindo.co.id", password: "password123" },
+  { label: "Admin", email: "admin@mitrasolusindo.co.id", password: "password123" },
   { label: "Employee", email: "budi.santoso@mitrasolusindo.co.id", password: "password123" },
 ]
 
@@ -50,7 +50,7 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
 
-    const { data, error: signInError } = await authClient.signIn.email({
+    const { error: signInError } = await authClient.signIn.email({
       email: signInEmail,
       password: signInPassword,
     })
@@ -62,7 +62,7 @@ export default function LoginPage() {
     }
 
     const session = await authClient.getSession()
-    const role = (session.data?.user as any)?.role || "employee"
+    const role = (session.data?.user as Record<string, unknown>)?.role as string || "employee"
     router.push(getRedirectPath(role))
   }
 

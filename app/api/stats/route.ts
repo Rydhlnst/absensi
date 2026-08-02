@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { user, attendance, task } from "@/lib/schema";
 import { eq, and, count } from "drizzle-orm";
@@ -11,6 +11,16 @@ export async function GET() {
       .select({ value: count() })
       .from(user)
       .where(eq(user.role, "employee"));
+
+    const totalAdminsResult = await db
+      .select({ value: count() })
+      .from(user)
+      .where(eq(user.role, "admin"));
+
+    const totalSuperAdminsResult = await db
+      .select({ value: count() })
+      .from(user)
+      .where(eq(user.role, "super_admin"));
 
     const presentTodayResult = await db
       .select({ value: count() })
@@ -33,8 +43,11 @@ export async function GET() {
       );
 
     const totalEmployees = totalEmployeesResult[0]?.value ?? 0;
+    const totalAdmins = totalAdminsResult[0]?.value ?? 0;
+    const totalUsers = totalEmployees + totalAdmins + (totalSuperAdminsResult[0]?.value ?? 0);
     const presentToday = (presentTodayResult[0]?.value ?? 0) + (lateTodayResult[0]?.value ?? 0);
     const absentToday = totalEmployees - presentToday;
+    const onlineEmployees = presentToday;
 
     const pendingTasksResult = await db
       .select({ value: count() })
@@ -58,16 +71,21 @@ export async function GET() {
     const pendingTasks = (pendingTasksResult[0]?.value ?? 0) + (inProgressTasksResult[0]?.value ?? 0);
     const completedTasks = completedTasksResult[0]?.value ?? 0;
     const totalTasks = totalTasksResult[0]?.value ?? 0;
+    const monthlySalary = presentToday * 200000;
 
     return NextResponse.json({
+      totalUsers,
+      totalAdmins,
       totalEmployees,
       presentToday,
       absentToday,
+      onlineEmployees,
       pendingTasks,
       completedTasks,
       totalTasks,
+      monthlySalary,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
   }
 }

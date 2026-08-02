@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { format } from "date-fns"
 import {
-  CalendarCheck,
   Clock,
   Coins,
   XCircle,
@@ -28,8 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { tasks, attendance } from "@/data/mock"
 import { authClient } from "@/lib/auth-client"
+import { apiClient } from "@/lib/api"
+import { toast } from "sonner"
 import type { TaskCategory, TaskStatus } from "@/types"
 
 const categoryColor: Record<TaskCategory, string> = {
@@ -68,6 +68,27 @@ const months = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ]
+
+interface TaskRecord {
+  id: string
+  title: string
+  category: string
+  status: string
+  workingDate: string
+  startedAt: string | null
+  completedAt: string | null
+  rewardPoints: number
+  assignedTo: string | null
+}
+
+interface AttendanceRecord {
+  id: string
+  employeeId: string
+  date: string
+  status: string
+  workingDuration: number
+  isLate: boolean
+}
 
 function formatDuration(startedAt: string | null, completedAt: string | null): string {
   if (!startedAt || !completedAt) return "N/A"
@@ -108,10 +129,57 @@ export default function TaskHistoryPage() {
   const [dateStart, setDateStart] = useState("")
   const [dateEnd, setDateEnd] = useState("")
 
+  const [tasks, setTasks] = useState<TaskRecord[]>([])
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [loading, setLoading] = useState(true)
+
   const currentEmployeeId = session?.user?.id || ""
   const now = new Date()
-  const currentMonth = now.getMonth() + 1
-  const currentYear = now.getFullYear()
+
+  const loadData = useCallback(async () => {
+    if (!currentEmployeeId) return
+    try {
+      setLoading(true)
+      const [t, a] = await Promise.all([
+        apiClient.get<TaskRecord[]>("/api/tasks", { assignedTo: currentEmployeeId }),
+        apiClient.get<AttendanceRecord[]>("/api/attendance", { employeeId: currentEmployeeId }),
+      ])
+      setTasks(t)
+      setAttendanceRecords(a)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Gagal memuat data"
+      toast.error(message)
+    } finally {
+      setLoading(false)
+    }
+  }, [currentEmployeeId])
+
+  void loadData
+
+  useEffect(() => {
+    if (!currentEmployeeId) return
+    let cancelled = false
+    async function load() {
+      try {
+        setLoading(true)
+        const [t, a] = await Promise.all([
+          apiClient.get<TaskRecord[]>("/api/tasks", { assignedTo: currentEmployeeId }),
+          apiClient.get<AttendanceRecord[]>("/api/attendance", { employeeId: currentEmployeeId }),
+        ])
+        if (!cancelled) {
+          setTasks(t)
+          setAttendanceRecords(a)
+        }
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Gagal memuat data"
+        if (!cancelled) toast.error(message)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [currentEmployeeId])
 
   const dateRange = useMemo(() => {
     const y = parseInt(selectedYear)
@@ -145,29 +213,29 @@ export default function TaskHistoryPage() {
         (a, b) =>
           new Date(b.workingDate).getTime() - new Date(a.workingDate).getTime()
       )
-  }, [currentEmployeeId, dateRange])
+  }, [tasks, currentEmployeeId, dateRange])
 
-  const attendanceRecords = useMemo(() => {
-    return attendance.filter(
+  const filteredAttendance = useMemo(() => {
+    return attendanceRecords.filter(
       (a) =>
         a.employeeId === currentEmployeeId &&
         a.date >= dateRange.start &&
         a.date <= dateRange.end
     )
-  }, [currentEmployeeId, dateRange])
+  }, [attendanceRecords, currentEmployeeId, dateRange])
 
   const summary = useMemo(() => {
     const completed = myTasks.filter((t) => t.status === "completed")
     const totalRewards = completed.reduce((sum, t) => sum + t.rewardPoints, 0)
-    const totalWorkMinutes = attendanceRecords.reduce(
+    const totalWorkMinutes = filteredAttendance.reduce(
       (sum, a) => sum + a.workingDuration,
       0
     )
-    const hariAbsen = attendanceRecords.filter((a) => a.status === "absent").length
-    const tepatWaktu = attendanceRecords.filter(
+    const hariAbsen = filteredAttendance.filter((a) => a.status === "absent").length
+    const tepatWaktu = filteredAttendance.filter(
       (a) => a.status === "present" && !a.isLate
     ).length
-    const terlambat = attendanceRecords.filter((a) => a.status === "late").length
+    const terlambat = filteredAttendance.filter((a) => a.status === "late").length
 
     return {
       total: myTasks.length,
@@ -179,7 +247,15 @@ export default function TaskHistoryPage() {
       terlambat,
       gajiDiperoleh: totalRewards * 100,
     }
-  }, [myTasks, attendanceRecords])
+  }, [myTasks, filteredAttendance])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4 pb-6">
@@ -371,9 +447,9 @@ export default function TaskHistoryPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`text-xs ${categoryColor[task.category]}`}
+                          className={`text-xs ${categoryColor[task.category as TaskCategory]}`}
                         >
-                          {categoryLabel[task.category]}
+                          {categoryLabel[task.category as TaskCategory]}
                         </Badge>
                       </TableCell>
                       <TableCell className="max-w-[180px] truncate text-xs">
@@ -385,9 +461,9 @@ export default function TaskHistoryPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`text-xs ${statusColor[task.status]}`}
+                          className={`text-xs ${statusColor[task.status as TaskStatus]}`}
                         >
-                          {statusLabel[task.status]}
+                          {statusLabel[task.status as TaskStatus]}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs">

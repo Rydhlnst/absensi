@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import { Printer, Share2, Trash2 } from "lucide-react"
-import { attendance, employees } from "@/data/mock"
+import { apiClient } from "@/lib/api"
+import { generatePDF, generateExcel, formatCurrency, formatDateTime } from "@/lib/export"
 import { toast } from "sonner"
 import type { AttendanceStatus } from "@/types"
 
@@ -29,6 +30,23 @@ const statusDot: Record<AttendanceStatus, string> = {
   holiday: "bg-gray-400",
 }
 
+interface Attendance {
+  id: string
+  employeeId: string
+  date: string
+  checkIn: string | null
+  checkOut: string | null
+  workingDuration: number
+  status: AttendanceStatus
+}
+
+interface Employee {
+  id: string
+  name: string
+  salary: number
+  role: string
+}
+
 type TimeFilter = "harian" | "bulanan" | "tahunan"
 
 export default function AdminReportsPage() {
@@ -37,13 +55,37 @@ export default function AdminReportsPage() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"))
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [logs, setLogs] = useState(attendance)
+  const [attendanceList, setAttendanceList] = useState<Attendance[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
 
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
 
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const [att, emps] = await Promise.all([
+        apiClient.get<Attendance[]>("/api/attendance"),
+        apiClient.get<Employee[]>("/api/employees"),
+      ])
+      setAttendanceList(att)
+      setEmployees(emps)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal memuat data")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      void loadData()
+    })
+  }, [loadData])
+
   const filteredLogs = useMemo(() => {
-    let result = logs
+    let result = attendanceList
 
     if (selectedEmployee !== "all") {
       result = result.filter((a) => a.employeeId === selectedEmployee)
@@ -58,38 +100,147 @@ export default function AdminReportsPage() {
       result = result.filter((a) => a.date.startsWith(String(selectedYear)))
     }
 
-    return result.sort((a, b) => b.date.localeCompare(a.date))
-  }, [logs, selectedEmployee, timeFilter, selectedDate, selectedMonth, selectedYear])
+    return [...result].sort((a, b) => b.date.localeCompare(a.date))
+  }, [attendanceList, selectedEmployee, timeFilter, selectedDate, selectedMonth, selectedYear])
 
   const stats = useMemo(() => {
     const present = filteredLogs.filter((a) => a.status === "present" || a.status === "late")
-    const totalMinutes = present.reduce((sum, a) => sum + a.workingDuration, 0)
+    const totalMinutes = present.reduce((sum, a) => sum + (a.workingDuration || 0), 0)
     const totalSalary = present.reduce((sum, a) => {
       const emp = employees.find((e) => e.id === a.employeeId)
       if (!emp || emp.salary <= 0) return sum
-      return sum + Math.round(a.workingDuration * (emp.salary / 22 / 8 / 60))
+      return sum + Math.round((a.workingDuration || 0) * (emp.salary / 22 / 8 / 60))
     }, 0)
     return { totalSalary, totalMinutes, totalLogs: filteredLogs.length }
-  }, [filteredLogs])
+  }, [filteredLogs, employees])
 
-  const handleDeleteAll = () => {
-    setLogs([])
-    toast.success("Semua log berhasil dihapus")
+  const getFilterLabel = (): string => {
+    if (timeFilter === "harian") return `Harian - ${format(new Date(selectedDate), "dd MMMM yyyy", { locale: id })}`
+    if (timeFilter === "bulanan") return `Bulanan - ${monthNames[selectedMonth - 1]} ${selectedYear}`
+    return `Tahunan - ${selectedYear}`
+  }
+
+  const handleExportPDF = () => {
+    const rows = filteredLogs.map((log) => {
+      const emp = employees.find((e) => e.id === log.employeeId)
+      return {
+        nama: emp?.name || "-",
+        tanggal: format(new Date(log.date), "dd MMM yyyy", { locale: id }),
+        masuk: log.checkIn ? format(new Date(log.checkIn), "HH:mm") : "-",
+        pulang: log.checkOut ? format(new Date(log.checkOut), "HH:mm") : "-",
+        durasi: log.workingDuration > 0 ? `${Math.floor(log.workingDuration / 60)}j ${log.workingDuration % 60}m` : "-",
+        status: statusLabel[log.status] || log.status,
+        gaji: formatCurrency(
+          emp && emp.salary > 0
+            ? Math.round((log.workingDuration || 0) * (emp.salary / 22 / 8 / 60))
+            : 0
+        ),
+      }
+    })
+
+    generatePDF({
+      title: "Laporan Absensi Karyawan",
+      subtitle: `Filter: ${getFilterLabel()}`,
+      companyName: "ANDAR.NET",
+      companyAddress: "Jl. TB Simatupang No. 88, Lt. 5, Jakarta Selatan",
+      companyPhone: "+622129529666",
+      filename: `laporan-absensi-${format(new Date(), "yyyyMMdd-HHmmss")}`,
+      summary: [
+        { label: "Total Gaji", value: formatCurrency(stats.totalSalary) },
+        { label: "Total Waktu", value: `${Math.floor(stats.totalMinutes / 60)}j ${stats.totalMinutes % 60}m` },
+        { label: "Jumlah Log", value: `${stats.totalLogs} Data` },
+      ],
+      columns: [
+        { header: "No", dataKey: "no", width: 10, align: "center" },
+        { header: "Nama Karyawan", dataKey: "nama", width: 45 },
+        { header: "Tanggal", dataKey: "tanggal", width: 28, align: "center" },
+        { header: "Masuk", dataKey: "masuk", width: 16, align: "center" },
+        { header: "Pulang", dataKey: "pulang", width: 16, align: "center" },
+        { header: "Durasi", dataKey: "durasi", width: 18, align: "center" },
+        { header: "Status", dataKey: "status", width: 22, align: "center" },
+        { header: "Gaji", dataKey: "gaji", width: 28, align: "right" },
+      ],
+      rows: rows.map((r, i) => ({ ...r, no: i + 1 })),
+    })
+
+    toast.success("PDF berhasil diunduh!")
+  }
+
+  const handleExportExcel = () => {
+    const rows = filteredLogs.map((log) => {
+      const emp = employees.find((e) => e.id === log.employeeId)
+      return {
+        "No": filteredLogs.indexOf(log) + 1,
+        "Nama Karyawan": emp?.name || "-",
+        Tanggal: format(new Date(log.date), "dd MMM yyyy", { locale: id }),
+        "Jam Masuk": log.checkIn ? format(new Date(log.checkIn), "HH:mm") : "-",
+        "Jam Pulang": log.checkOut ? format(new Date(log.checkOut), "HH:mm") : "-",
+        "Durasi (menit)": log.workingDuration || 0,
+        Status: statusLabel[log.status] || log.status,
+        Gaji: emp && emp.salary > 0
+          ? Math.round((log.workingDuration || 0) * (emp.salary / 22 / 8 / 60))
+          : 0,
+      }
+    })
+
+    generateExcel({
+      title: "Laporan Absensi Karyawan",
+      subtitle: `Filter: ${getFilterLabel()}`,
+      filename: `laporan-absensi-${format(new Date(), "yyyyMMdd-HHmmss")}`,
+      summary: [
+        { label: "Total Gaji", value: formatCurrency(stats.totalSalary) },
+        { label: "Total Waktu", value: `${Math.floor(stats.totalMinutes / 60)}j ${stats.totalMinutes % 60}m` },
+        { label: "Jumlah Log", value: `${stats.totalLogs} Data` },
+      ],
+      columns: [
+        { header: "No", dataKey: "No", width: 5 },
+        { header: "Nama Karyawan", dataKey: "Nama Karyawan", width: 25 },
+        { header: "Tanggal", dataKey: "Tanggal", width: 15 },
+        { header: "Jam Masuk", dataKey: "Jam Masuk", width: 12 },
+        { header: "Jam Pulang", dataKey: "Jam Pulang", width: 12 },
+        { header: "Durasi (menit)", dataKey: "Durasi (menit)", width: 15 },
+        { header: "Status", dataKey: "Status", width: 15 },
+        { header: "Gaji (Rp)", dataKey: "Gaji", width: 18 },
+      ],
+      rows,
+    })
+
+    toast.success("Excel berhasil diunduh!")
+  }
+
+  const handleDeleteAll = async () => {
+    if (!confirm("Hapus semua log absensi? Tindakan ini tidak dapat dibatalkan.")) return
+    try {
+      for (const log of attendanceList) {
+        await apiClient.delete(`/api/attendance?id=${log.id}`)
+      }
+      toast.success("Semua log berhasil dihapus")
+      setAttendanceList([])
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal menghapus log")
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-4">
-      {/* Top action buttons */}
       <div className="flex gap-2">
         <button
-          onClick={() => toast.info("Mencetak PDF...")}
+          onClick={handleExportPDF}
           className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
         >
           <Printer className="size-4" />
           Cetak PDF
         </button>
         <button
-          onClick={() => toast.info("Mengekspor Excel...")}
+          onClick={handleExportExcel}
           className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
         >
           <Share2 className="size-4" />
@@ -97,8 +248,7 @@ export default function AdminReportsPage() {
         </button>
       </div>
 
-      {/* Filter card */}
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-4 space-y-3">
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
         <div>
           <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Pilih Karyawan</label>
           <select
@@ -177,33 +327,37 @@ export default function AdminReportsPage() {
         )}
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
-          <p className="text-[10px] uppercase tracking-widest text-green-600 font-semibold mb-1">Total Gaji</p>
-          <p className="text-lg font-bold text-green-700">Rp {stats.totalSalary.toLocaleString("id-ID")}</p>
-          <p className="text-xs text-green-500 mt-0.5">Akumulasi upah terfilter</p>
+        <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4 flex items-start justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Total Gaji</p>
+            <p className="text-lg font-extrabold text-blue-700 mt-1">{formatCurrency(stats.totalSalary)}</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">Akumulasi upah terfilter</p>
+          </div>
+          <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-xl shrink-0">💰</div>
         </div>
-        <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
-          <p className="text-[10px] uppercase tracking-widest text-green-600 font-semibold mb-1">Total Waktu</p>
-          <p className="text-lg font-bold text-green-700">
-            {Math.floor(stats.totalMinutes / 60)}J {stats.totalMinutes % 60}M
-          </p>
-          <p className="text-xs text-green-500 mt-0.5">Jam kerja bersih</p>
+        <div className="rounded-2xl bg-green-50 border border-green-100 p-4 flex items-start justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Total Waktu</p>
+            <p className="text-lg font-extrabold text-green-700 mt-1">
+              {Math.floor(stats.totalMinutes / 60)}J {stats.totalMinutes % 60}M
+            </p>
+            <p className="text-[10px] text-gray-500 mt-0.5">Jam kerja bersih</p>
+          </div>
+          <div className="flex size-10 items-center justify-center rounded-xl bg-green-100 text-xl shrink-0">🕐</div>
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-4 flex items-center justify-between">
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 flex items-start justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1">Jumlah Data</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.totalLogs} Log</p>
-          <p className="text-xs text-gray-400">Total catatan terfilter</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Jumlah Data</p>
+          <p className="text-2xl font-extrabold text-gray-900 mt-1">{stats.totalLogs} Log</p>
+          <p className="text-xs text-gray-500 mt-0.5">Total catatan terfilter</p>
         </div>
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-gray-100 text-xl">📄</div>
+        <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-xl shrink-0">📄</div>
       </div>
 
-      {/* Log list */}
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <h2 className="text-sm font-bold text-gray-900">Log Aktivitas Absensi Detil</h2>
           <button
@@ -228,8 +382,8 @@ export default function AdminReportsPage() {
                     <p className="text-sm font-semibold text-gray-900 truncate">{emp?.name || "-"}</p>
                     <p className="text-xs text-gray-400">
                       {format(new Date(log.date), "dd MMM yyyy", { locale: id })}
-                      {log.checkIn && ` · Masuk: ${new Date(log.checkIn).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`}
-                      {log.checkOut && ` · Pulang: ${new Date(log.checkOut).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`}
+                      {log.checkIn && ` · Masuk: ${formatDateTime(log.checkIn)}`}
+                      {log.checkOut && ` · Pulang: ${formatDateTime(log.checkOut)}`}
                     </p>
                   </div>
                   <span className="text-xs font-semibold text-gray-500 shrink-0">{statusLabel[log.status]}</span>

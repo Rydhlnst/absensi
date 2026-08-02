@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { reward, user } from "@/lib/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(reward.createdAt));
 
     return NextResponse.json(rewards);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch rewards" }, { status: 500 });
   }
 }
@@ -44,14 +44,14 @@ export async function POST(request: NextRequest) {
       await db
         .update(user)
         .set({
-          rewardPoints: (user.rewardPoints as any) + body.points,
+          rewardPoints: sql`${user.rewardPoints} + ${body.points}`,
           updatedAt: new Date(),
         })
         .where(eq(user.id, body.employeeId));
     }
 
     return NextResponse.json(newReward[0], { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to add reward" }, { status: 500 });
   }
 }
@@ -82,14 +82,52 @@ export async function PUT(request: NextRequest) {
       await db
         .update(user)
         .set({
-          rewardPoints: (user.rewardPoints as any) + pointsDiff,
+          rewardPoints: sql`${user.rewardPoints} + ${pointsDiff}`,
           updatedAt: new Date(),
         })
         .where(eq(user.id, currentReward.employeeId!));
     }
 
     return NextResponse.json(updated[0]);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to update reward" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Reward id is required" }, { status: 400 });
+    }
+
+    const existing = await db
+      .select()
+      .from(reward)
+      .where(eq(reward.id, id))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return NextResponse.json({ error: "Reward not found" }, { status: 404 });
+    }
+
+    const target = existing[0];
+    await db.delete(reward).where(eq(reward.id, id));
+
+    if (target.points) {
+      await db
+        .update(user)
+        .set({
+          rewardPoints: sql`${user.rewardPoints} - ${target.points}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(user.id, target.employeeId!));
+    }
+
+    return NextResponse.json({ message: "Reward deleted" });
+  } catch {
+    return NextResponse.json({ error: "Failed to delete reward" }, { status: 500 });
   }
 }

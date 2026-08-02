@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import {
@@ -13,19 +13,10 @@ import {
   ClipboardList,
   Settings,
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Select,
   SelectContent,
@@ -33,238 +24,188 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { employees } from "@/data/mock"
-
-type LogType = "login" | "logout" | "task_update" | "attendance" | "settings_change"
+import { apiClient } from "@/lib/api"
+import { getAvatarUrl } from "@/lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { toast } from "sonner"
 
 interface LogEntry {
   id: string
+  userId: string | null
+  userName: string | null
+  userImage: string | null
+  type: string
+  detail: string | null
+  ipAddress: string | null
   timestamp: string
-  userId: string
-  userName: string
-  type: LogType
-  detail: string
-  ipAddress: string
 }
-
-const logEntries: LogEntry[] = [
-  { id: "log-001", timestamp: "2026-07-31T08:00:12.000Z", userId: "emp-001", userName: "Ahmad Rizky Pratama", type: "login", detail: "Login berhasil dari perangkat Android", ipAddress: "192.168.1.101" },
-  { id: "log-002", timestamp: "2026-07-31T08:01:45.000Z", userId: "emp-003", userName: "Budi Santoso", type: "attendance", detail: "Check-in di lokasi kantor", ipAddress: "10.0.0.55" },
-  { id: "log-003", timestamp: "2026-07-31T08:05:30.000Z", userId: "emp-002", userName: "Siti Nurhaliza", type: "login", detail: "Login berhasil dari perangkat Web", ipAddress: "192.168.1.102" },
-  { id: "log-004", timestamp: "2026-07-31T08:10:00.000Z", userId: "emp-005", userName: "Eko Prasetyo", type: "attendance", detail: "Check-in terlambat 10 menit", ipAddress: "10.0.0.60" },
-  { id: "log-005", timestamp: "2026-07-31T08:15:22.000Z", userId: "emp-001", userName: "Ahmad Rizky Pratama", type: "task_update", detail: "Tugas \"Pemasangan Router WiFi\" ditugaskan ke Budi Santoso", ipAddress: "192.168.1.101" },
-  { id: "log-006", timestamp: "2026-07-31T08:20:10.000Z", userId: "emp-004", userName: "Dewi Anggraini", type: "login", detail: "Login berhasil dari perangkat iOS", ipAddress: "10.0.0.70" },
-  { id: "log-007", timestamp: "2026-07-31T08:30:00.000Z", userId: "emp-001", userName: "Ahmad Rizky Pratama", type: "settings_change", detail: "Mengubah radius GPS dari 100m menjadi 150m", ipAddress: "192.168.1.101" },
-  { id: "log-008", timestamp: "2026-07-31T09:00:15.000Z", userId: "emp-007", userName: "Gilang Ramadhan", type: "attendance", detail: "Check-in di lokasi kantor", ipAddress: "10.0.0.80" },
-  { id: "log-009", timestamp: "2026-07-31T09:10:30.000Z", userId: "emp-009", userName: "Indra Kusuma", type: "task_update", detail: "Tugas \"Maintenance Server Bulanan\" status diubah menjadi In Progress", ipAddress: "10.0.0.90" },
-  { id: "log-010", timestamp: "2026-07-31T09:15:45.000Z", userId: "emp-010", userName: "Joko Widodo", type: "login", detail: "Login berhasil dari perangkat Android", ipAddress: "10.0.0.95" },
-  { id: "log-011", timestamp: "2026-07-31T09:20:00.000Z", userId: "emp-002", userName: "Siti Nurhaliza", type: "task_update", detail: "Tugas \"Instalasi CCTV 4 Channel\" ditugaskan ke Dewi Anggraini", ipAddress: "192.168.1.102" },
-  { id: "log-012", timestamp: "2026-07-31T09:30:10.000Z", userId: "emp-014", userName: "Nugroho Adi", type: "attendance", detail: "Check-in di lokasi kantor", ipAddress: "10.0.0.100" },
-  { id: "log-013", timestamp: "2026-07-31T09:45:20.000Z", userId: "emp-001", userName: "Ahmad Rizky Pratama", type: "settings_change", detail: "Mengubah jam kerja dari 08:00-17:00 menjadi 08:00-17:30", ipAddress: "192.168.1.101" },
-  { id: "log-014", timestamp: "2026-07-31T10:00:00.000Z", userId: "emp-012", userName: "Lukman Hakim", type: "login", detail: "Login berhasil dari perangkat Android", ipAddress: "10.0.0.110" },
-  { id: "log-015", timestamp: "2026-07-31T10:15:30.000Z", userId: "emp-019", userName: "Saptono Putra", type: "task_update", detail: "Tugas \"Pengecekan Firewall\" status diubah menjadi Completed", ipAddress: "10.0.0.120" },
-  { id: "log-016", timestamp: "2026-07-31T10:30:45.000Z", userId: "emp-008", userName: "Hana Permata", type: "attendance", detail: "Check-in di lokasi kantor", ipAddress: "10.0.0.85" },
-  { id: "log-017", timestamp: "2026-07-31T10:45:00.000Z", userId: "emp-001", userName: "Ahmad Rizky Pratama", type: "logout", detail: "Logout dari sistem", ipAddress: "192.168.1.101" },
-  { id: "log-018", timestamp: "2026-07-31T11:00:15.000Z", userId: "emp-022", userName: "Vita Anggraeni", type: "login", detail: "Login berhasil dari perangkat Web", ipAddress: "10.0.0.130" },
-  { id: "log-019", timestamp: "2026-07-31T11:15:30.000Z", userId: "emp-027", userName: "Ahmad Fauzi", type: "task_update", detail: "Tugas \"Pemasangan Alarm Anti Pencurian\" ditugaskan ke Ahmad Fauzi", ipAddress: "10.0.0.140" },
-  { id: "log-020", timestamp: "2026-07-31T11:30:45.000Z", userId: "emp-003", userName: "Budi Santoso", type: "logout", detail: "Logout dari sistem", ipAddress: "10.0.0.55" },
-]
 
 const ITEMS_PER_PAGE = 10
 
-const typeConfig: Record<LogType, { label: string; color: string; icon: typeof LogIn }> = {
-  login: { label: "Login", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400", icon: LogIn },
-  logout: { label: "Logout", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400", icon: LogOut },
-  task_update: { label: "Task Update", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400", icon: CheckSquare },
-  attendance: { label: "Absensi", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400", icon: ClipboardList },
-  settings_change: { label: "Settings", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400", icon: Settings },
+const typeConfig: Record<string, { label: string; color: string; icon: typeof LogIn }> = {
+  login: { label: "Login", color: "bg-green-100 text-green-700", icon: LogIn },
+  logout: { label: "Logout", color: "bg-slate-100 text-slate-700", icon: LogOut },
+  task_update: { label: "Task Update", color: "bg-blue-100 text-blue-700", icon: CheckSquare },
+  attendance: { label: "Absensi", color: "bg-orange-100 text-orange-700", icon: ClipboardList },
+  settings_change: { label: "Settings", color: "bg-purple-100 text-purple-700", icon: Settings },
+  task: { label: "Tugas", color: "bg-blue-100 text-blue-700", icon: CheckSquare },
+  reward: { label: "Reward", color: "bg-amber-100 text-amber-700", icon: Settings },
+  system: { label: "Sistem", color: "bg-purple-100 text-purple-700", icon: Settings },
+  warning: { label: "Peringatan", color: "bg-red-100 text-red-700", icon: Settings },
+}
+
+function getInitials(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
 }
 
 export default function SystemLogsPage() {
-  const [typeFilter, setTypeFilter] = useState<string>("all")
-  const [dateFilter, setDateFilter] = useState("")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState("")
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        setLoading(true)
+        const data = await apiClient.get<LogEntry[]>("/api/system-logs", { limit: "200" })
+        if (!cancelled) setLogs(data)
+      } catch (e: unknown) {
+        const err = e instanceof Error ? e : null
+        if (!cancelled) toast.error(err?.message || "Gagal memuat log")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const filteredLogs = useMemo(() => {
-    return logEntries.filter((log) => {
-      if (typeFilter !== "all" && log.type !== typeFilter) return false
-      if (dateFilter) {
-        const logDate = format(new Date(log.timestamp), "yyyy-MM-dd")
-        if (logDate !== dateFilter) return false
-      }
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase()
-        return (
-          log.userName.toLowerCase().includes(query) ||
-          log.detail.toLowerCase().includes(query) ||
-          log.ipAddress.toLowerCase().includes(query)
-        )
-      }
-      return true
-    })
-  }, [typeFilter, dateFilter, searchQuery])
+    let result = logs
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter(
+        (l) =>
+          l.detail?.toLowerCase().includes(q) ||
+          l.userName?.toLowerCase().includes(q)
+      )
+    }
+    if (typeFilter !== "all") {
+      result = result.filter((l) => l.type === typeFilter)
+    }
+    return result
+  }, [logs, search, typeFilter])
 
   const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE)
   const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE
   )
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">System Logs</h1>
-        <p className="text-muted-foreground">
-          Pantau semua aktivitas dan perubahan dalam sistem
-        </p>
+        <h1 className="text-2xl font-bold">Log Sistem</h1>
+        <p className="text-muted-foreground">Riwayat aktivitas sistem</p>
       </div>
-
-      <Separator />
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Log Aktivitas</CardTitle>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Cari log..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="pl-9 w-56"
-                />
-              </div>
-              <Select
-                value={typeFilter}
-                onValueChange={(value) => {
-                  setTypeFilter(value)
-                  setCurrentPage(1)
-                }}
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Semua Tipe" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Tipe</SelectItem>
-                  <SelectItem value="login">Login</SelectItem>
-                  <SelectItem value="logout">Logout</SelectItem>
-                  <SelectItem value="task_update">Task Update</SelectItem>
-                  <SelectItem value="attendance">Absensi</SelectItem>
-                  <SelectItem value="settings_change">Settings Change</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                type="date"
-                value={dateFilter}
+                placeholder="Cari aktivitas, user..."
+                value={search}
                 onChange={(e) => {
-                  setDateFilter(e.target.value)
-                  setCurrentPage(1)
+                  setSearch(e.target.value)
+                  setPage(1)
                 }}
-                className="w-44"
+                className="pl-9"
               />
             </div>
+            <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1) }}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Semua Tipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Tipe</SelectItem>
+                <SelectItem value="login">Login</SelectItem>
+                <SelectItem value="logout">Logout</SelectItem>
+                <SelectItem value="task">Tugas</SelectItem>
+                <SelectItem value="attendance">Absensi</SelectItem>
+                <SelectItem value="reward">Reward</SelectItem>
+                <SelectItem value="system">Sistem</SelectItem>
+                <SelectItem value="warning">Peringatan</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Waktu</TableHead>
-                <TableHead>Pengguna</TableHead>
-                <TableHead>Aksi</TableHead>
-                <TableHead>Detail</TableHead>
-                <TableHead>IP Address</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedLogs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
-                    <p className="text-muted-foreground">Tidak ada log ditemukan</p>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginatedLogs.map((log) => {
-                  const config = typeConfig[log.type]
-                  const Icon = config.icon
-                  return (
-                    <TableRow key={log.id}>
-                      <TableCell className="text-muted-foreground">
-                        {format(new Date(log.timestamp), "dd MMM yyyy, HH:mm", { locale: id })}
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium">{log.userName}</p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="gap-1">
-                          <Icon className="size-3" />
-                          {config.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {log.detail}
-                        </p>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {log.ipAddress}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+          {paginatedLogs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Belum ada log aktivitas
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {paginatedLogs.map((log) => {
+                const config = typeConfig[log.type] || typeConfig.system
+                const Icon = config.icon
+                return (
+                  <div
+                    key={log.id}
+                    className="flex items-start gap-3 rounded-xl border border-gray-200 p-3"
+                  >
+                    {log.userImage || log.userName ? (
+                      <Avatar size="sm">
+                        <AvatarImage src={log.userImage || (log.userName ? getAvatarUrl(log.userName) : "")} />
+                        <AvatarFallback>{getInitials(log.userName || "?")}</AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <div className={`flex size-9 items-center justify-center rounded-full ${config.color}`}>
+                        <Icon className="size-4" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className={config.color}>{config.label}</Badge>
+                        {log.userName && <span className="text-sm font-semibold">{log.userName}</span>}
+                      </div>
+                      <p className="text-sm text-gray-700">{log.detail}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {format(new Date(log.timestamp), "dd MMM yyyy HH:mm:ss", { locale: id })}
+                        {log.ipAddress && ` · ${log.ipAddress}`}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4">
               <p className="text-sm text-muted-foreground">
-                Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} -{" "}
-                {Math.min(currentPage * ITEMS_PER_PAGE, filteredLogs.length)} dari{" "}
-                {filteredLogs.length} log
+                Halaman {page} dari {totalPages}
               </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
+              <div className="flex gap-2">
+                <Button variant="outline" size="icon-sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                   <ChevronLeft className="size-4" />
                 </Button>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let page: number
-                  if (totalPages <= 5) {
-                    page = i + 1
-                  } else if (currentPage <= 3) {
-                    page = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    page = totalPages - 4 + i
-                  } else {
-                    page = currentPage - 2 + i
-                  }
-                  return (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="icon-sm"
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </Button>
-                  )
-                })}
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
+                <Button variant="outline" size="icon-sm" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
                   <ChevronRight className="size-4" />
                 </Button>
               </div>

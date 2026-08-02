@@ -8,7 +8,7 @@ export const user = pgTable("user", {
   image: text("image"),
   createdAt: timestamp("createdAt").notNull(),
   updatedAt: timestamp("updatedAt").notNull(),
-  role: text("role").default("user"),
+  role: text("role").default("employee"),
   department: text("department").default(""),
   position: text("position").default(""),
   phone: text("phone").default(""),
@@ -87,6 +87,9 @@ export const task = pgTable("task", {
   startedAt: timestamp("startedAt"),
   completedAt: timestamp("completedAt"),
   workingDate: text("workingDate"),
+  estimatedDuration: integer("estimatedDuration").default(120),
+  attachments: text("attachments"),
+  notes: text("notes"),
 });
 
 export const attendance = pgTable("attendance", {
@@ -191,4 +194,29 @@ export const systemLog = pgTable("system_log", {
   detail: text("detail"),
   ipAddress: text("ipAddress"),
   timestamp: timestamp("timestamp"),
+});
+
+export const leave = pgTable("leave", {
+  id: text("id").primaryKey(),
+  employeeId: text("employeeId").references(() => user.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  startDate: text("startDate").notNull(),
+  endDate: text("endDate").notNull(),
+  reason: text("reason"),
+  status: text("status").notNull().default("pending"),
+  approvedBy: text("approvedBy").references(() => user.id),
+  approvedAt: timestamp("approvedAt"),
+  rejectionReason: text("rejectionReason"),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+});
+
+export const device = pgTable("device", {
+  id: text("id").primaryKey(),
+  userId: text("userId").references(() => user.id, { onDelete: "cascade" }),
+  deviceId: text("deviceId").notNull(),
+  deviceName: text("deviceName"),
+  platform: text("platform"),
+  boundAt: timestamp("boundAt").notNull(),
+  isActive: boolean("isActive").default(true),
 });

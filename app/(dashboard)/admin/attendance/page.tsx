@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import {
@@ -15,7 +15,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
-  Users,
   Clock,
   AlertTriangle,
   Plane,
@@ -25,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Table,
   TableBody,
@@ -61,8 +60,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { employees, attendance } from "@/data/mock"
-import type { Attendance, AttendanceStatus, User } from "@/types"
+import { apiClient } from "@/lib/api"
+import { getAvatarUrl } from "@/lib/utils"
+import { toast } from "sonner"
+import type { Attendance, AttendanceStatus } from "@/types"
 
 type SortField =
   | "name"
@@ -73,9 +74,21 @@ type SortField =
   | "late"
 type SortDirection = "asc" | "desc"
 
+interface Employee {
+  id: string
+  name: string
+  email: string
+  phone: string
+  image: string | null
+  department: string
+  position: string
+  role: string
+  nik?: string
+}
+
 interface AttendanceRow {
   attendance: Attendance
-  employee: User
+  employee: Employee
 }
 
 function getInitials(name: string): string {
@@ -147,6 +160,28 @@ function getShortAddress(address: string): string {
 
 const ITEMS_PER_PAGE = 10
 
+function SortableHead({
+  field,
+  children,
+  onSort,
+}: {
+  field: SortField
+  children: React.ReactNode
+  onSort: (field: SortField) => void
+}) {
+  return (
+    <TableHead
+      className="cursor-pointer select-none hover:text-foreground"
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        <ArrowUpDown className="size-3 text-muted-foreground" />
+      </div>
+    </TableHead>
+  )
+}
+
 export default function AttendanceManagementPage() {
   const today = format(new Date(), "yyyy-MM-dd")
   const [selectedDate, setSelectedDate] = useState(today)
@@ -160,14 +195,43 @@ export default function AttendanceManagementPage() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [approvals, setApprovals] = useState<Record<string, boolean>>({})
 
+  const [attendance, setAttendance] = useState<Attendance[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        setLoading(true)
+        const [att, emps] = await Promise.all([
+          apiClient.get<Attendance[]>("/api/attendance"),
+          apiClient.get<Employee[]>("/api/employees"),
+        ])
+        if (!cancelled) {
+          setAttendance(att)
+          setEmployees(emps)
+        }
+      } catch (e: unknown) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Gagal memuat data")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const departments = useMemo(() => {
     const deps = new Set(employees.map((e) => e.department))
     return Array.from(deps).sort()
-  }, [])
+  }, [employees])
 
   const dateAttendance = useMemo(() => {
     return attendance.filter((a) => a.date === selectedDate)
-  }, [selectedDate])
+  }, [attendance, selectedDate])
 
   const attendanceRows = useMemo(() => {
     return dateAttendance
@@ -282,23 +346,13 @@ export default function AttendanceManagementPage() {
     setDetailOpen(true)
   }
 
-  const SortableHead = ({
-    field,
-    children,
-  }: {
-    field: SortField
-    children: React.ReactNode
-  }) => (
-    <TableHead
-      className="cursor-pointer select-none hover:text-foreground"
-      onClick={() => handleSort(field)}
-    >
-      <div className="flex items-center gap-1">
-        {children}
-        <ArrowUpDown className="size-3 text-muted-foreground" />
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    </TableHead>
-  )
+    )
+  }
 
   return (
     <TooltipProvider>
@@ -481,16 +535,16 @@ export default function AttendanceManagementPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">Foto</TableHead>
-                  <SortableHead field="name">Nama</SortableHead>
-                  <SortableHead field="checkIn">Check In</SortableHead>
-                  <SortableHead field="checkOut">
+                  <SortableHead field="name" onSort={handleSort}>Nama</SortableHead>
+                  <SortableHead field="checkIn" onSort={handleSort}>Check In</SortableHead>
+                  <SortableHead field="checkOut" onSort={handleSort}>
                     Check Out
                   </SortableHead>
-                  <SortableHead field="duration">Durasi</SortableHead>
-                  <SortableHead field="status">Status</SortableHead>
+                  <SortableHead field="duration" onSort={handleSort}>Durasi</SortableHead>
+                  <SortableHead field="status" onSort={handleSort}>Status</SortableHead>
                   <TableHead>GPS</TableHead>
                   <TableHead>Selfie</TableHead>
-                  <SortableHead field="late">
+                  <SortableHead field="late" onSort={handleSort}>
                     Keterlambatan
                   </SortableHead>
                   <TableHead>Persetujuan</TableHead>
@@ -524,6 +578,7 @@ export default function AttendanceManagementPage() {
                       >
                         <TableCell>
                           <Avatar size="sm">
+                            <AvatarImage src={row.employee.image || getAvatarUrl(row.employee.name)} />
                             <AvatarFallback>
                               {getInitials(row.employee.name)}
                             </AvatarFallback>
@@ -771,8 +826,9 @@ export default function AttendanceManagementPage() {
             </DialogHeader>
             {selectedRow && (
               <div className="space-y-6">
-                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
                   <Avatar size="lg">
+                    <AvatarImage src={selectedRow.employee.image || getAvatarUrl(selectedRow.employee.name)} />
                     <AvatarFallback>
                       {getInitials(selectedRow.employee.name)}
                     </AvatarFallback>

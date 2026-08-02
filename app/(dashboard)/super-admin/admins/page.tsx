@@ -1,29 +1,19 @@
 "use client"
 
-import { useState } from "react"
-import { format } from "date-fns"
-import { id } from "date-fns/locale"
+import { useState, useEffect } from "react"
 import {
   Plus,
   Pencil,
   Trash2,
-  Search,
-  MoreHorizontal,
+  Loader2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getAvatarUrl } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -39,22 +29,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { employees } from "@/data/mock"
-import type { User } from "@/types"
+import { apiClient } from "@/lib/api"
+import { toast } from "sonner"
 
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
+interface AdminUser {
+  id: string
+  name: string
+  email: string
+  phone: string
+  image: string | null
+  department: string
+  position: string
+  status: string
+  role: string
 }
 
 interface AdminFormData {
   name: string
   email: string
   phone: string
+  password: string
   department: string
   position: string
   status: "active" | "inactive" | "suspended"
@@ -64,6 +58,7 @@ const defaultFormData: AdminFormData = {
   name: "",
   email: "",
   phone: "",
+  password: "",
   department: "",
   position: "",
   status: "active",
@@ -77,16 +72,49 @@ const departments = [
   "Teknisi Lapangan",
 ]
 
+function getInitials(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+}
+
 export default function AdminManagementPage() {
-  const [admins, setAdmins] = useState<User[]>(
-    employees.filter((e) => e.role === "admin")
-  )
+  const [admins, setAdmins] = useState<AdminUser[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [editingAdmin, setEditingAdmin] = useState<User | null>(null)
-  const [deletingAdmin, setDeletingAdmin] = useState<User | null>(null)
+  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null)
   const [formData, setFormData] = useState<AdminFormData>(defaultFormData)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const data = await apiClient.get<AdminUser[]>("/api/admins")
+      setAdmins(data)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Gagal memuat admin"
+      toast.error(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        setLoading(true)
+        const data = await apiClient.get<AdminUser[]>("/api/admins")
+        if (!cancelled) setAdmins(data)
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Gagal memuat admin"
+        if (!cancelled) toast.error(message)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
 
   const filteredAdmins = admins.filter(
     (admin) =>
@@ -95,65 +123,82 @@ export default function AdminManagementPage() {
       admin.department.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  function handleOpenAdd() {
+  const handleOpenAdd = () => {
     setEditingAdmin(null)
     setFormData(defaultFormData)
     setDialogOpen(true)
   }
 
-  function handleOpenEdit(admin: User) {
+  const handleOpenEdit = (admin: AdminUser) => {
     setEditingAdmin(admin)
     setFormData({
       name: admin.name,
       email: admin.email,
-      phone: admin.phone,
-      department: admin.department,
-      position: admin.position,
-      status: admin.status,
+      phone: admin.phone || "",
+      password: "",
+      department: admin.department || "",
+      position: admin.position || "",
+      status: (admin.status as "active" | "inactive" | "suspended") || "active",
     })
     setDialogOpen(true)
   }
 
-  function handleOpenDelete(admin: User) {
-    setDeletingAdmin(admin)
-    setDeleteDialogOpen(true)
-  }
-
-  function handleSave() {
-    if (editingAdmin) {
-      setAdmins((prev) =>
-        prev.map((a) =>
-          a.id === editingAdmin.id
-            ? { ...a, ...formData }
-            : a
-        )
-      )
-    } else {
-      const newAdmin: User = {
-        id: `emp-${String(employees.length + 1).padStart(3, "0")}`,
-        ...formData,
-        role: "admin",
-        avatar: null,
-        joinDate: new Date().toISOString(),
-        salary: 0,
-        address: "",
-        nik: "",
-        npwp: "",
-        bankName: "",
-        bankAccount: "",
-        rewardPoints: 0,
+  const handleSave = async () => {
+    if (!editingAdmin && formData.password.length < 8) {
+      toast.error("Password minimal 8 karakter")
+      return
+    }
+    setSaving(true)
+    try {
+      if (editingAdmin) {
+        await apiClient.put("/api/admins", {
+          id: editingAdmin.id,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          department: formData.department,
+          position: formData.position,
+          status: formData.status,
+        })
+        toast.success("Admin berhasil diperbarui")
+      } else {
+        await apiClient.post("/api/admins", {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          role: "admin",
+          department: formData.department,
+          position: formData.position,
+        })
+        toast.success("Admin berhasil dibuat")
       }
-      setAdmins((prev) => [...prev, newAdmin])
+      setDialogOpen(false)
+      fetchData()
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal menyimpan admin")
+    } finally {
+      setSaving(false)
     }
-    setDialogOpen(false)
   }
 
-  function handleDelete() {
-    if (deletingAdmin) {
-      setAdmins((prev) => prev.filter((a) => a.id !== deletingAdmin.id))
+  const handleDelete = async (admin: AdminUser) => {
+    if (!confirm(`Nonaktifkan admin ${admin.name}?`)) return
+    try {
+      await apiClient.delete(`/api/admins?id=${admin.id}`)
+      toast.success("Admin dinonaktifkan")
+      fetchData()
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal menonaktifkan admin")
     }
-    setDeleteDialogOpen(false)
-    setDeletingAdmin(null)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
   }
 
   return (
@@ -161,9 +206,7 @@ export default function AdminManagementPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Manajemen Admin</h1>
-          <p className="text-muted-foreground">
-            Kelola akun admin sistem
-          </p>
+          <p className="text-muted-foreground">Kelola akun admin sistem</p>
         </div>
         <Button onClick={handleOpenAdd}>
           <Plus className="size-4" />
@@ -171,182 +214,122 @@ export default function AdminManagementPage() {
         </Button>
       </div>
 
-      <Separator />
-
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Daftar Admin</CardTitle>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Cari admin..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-72"
+                className="w-72"
               />
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Foto</TableHead>
-                <TableHead>Nama</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Departemen</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAdmins.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    <p className="text-muted-foreground">Tidak ada admin ditemukan</p>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredAdmins.map((admin) => (
-                  <TableRow key={admin.id}>
-                    <TableCell>
-                      <Avatar size="sm">
-                        <AvatarFallback>
-                          {getInitials(admin.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{admin.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {admin.position}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {admin.email}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {admin.department}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          admin.status === "active"
-                            ? "default"
-                            : admin.status === "inactive"
-                              ? "secondary"
-                              : "destructive"
-                        }
-                      >
-                        {admin.status === "active"
-                          ? "Aktif"
-                          : admin.status === "inactive"
-                            ? "Nonaktif"
-                            : "Suspended"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleOpenEdit(admin)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleOpenDelete(admin)}
-                        >
-                          <Trash2 className="size-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          {filteredAdmins.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Tidak ada admin ditemukan
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {filteredAdmins.map((admin) => (
+                <div
+                  key={admin.id}
+                  className="flex items-center gap-3 rounded-xl border border-gray-200 p-3"
+                >
+                  <Avatar size="default">
+                    <AvatarImage src={admin.image || getAvatarUrl(admin.name)} />
+                    <AvatarFallback>{getInitials(admin.name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">{admin.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {admin.email} · {admin.department}
+                    </p>
+                  </div>
+                  <Badge variant={admin.status === "active" ? "default" : admin.status === "inactive" ? "secondary" : "destructive"}>
+                    {admin.status === "active" ? "Aktif" : admin.status === "inactive" ? "Nonaktif" : "Suspended"}
+                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon-sm" onClick={() => handleOpenEdit(admin)}>
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(admin)}>
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {editingAdmin ? "Edit Admin" : "Tambah Admin"}
-            </DialogTitle>
+            <DialogTitle>{editingAdmin ? "Edit Admin" : "Tambah Admin"}</DialogTitle>
             <DialogDescription>
-              {editingAdmin
-                ? "Ubah informasi admin di bawah ini."
-                : "Isi informasi untuk menambahkan admin baru."}
+              {editingAdmin ? "Ubah informasi admin" : "Isi informasi untuk menambahkan admin baru"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nama Lengkap</label>
+              <Label>Nama Lengkap</Label>
               <Input
                 placeholder="Masukkan nama lengkap"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
+                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Email</label>
+              <Label>Email</Label>
               <Input
                 type="email"
                 placeholder="Masukkan email"
                 value={formData.email}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, email: e.target.value }))
-                }
+                onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Telepon</label>
+              <Label>Telepon</Label>
               <Input
                 placeholder="Masukkan nomor telepon"
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                }
+                onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
               />
             </div>
+            {!editingAdmin && (
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <Input
+                  type="password"
+                  placeholder="Minimal 8 karakter"
+                  value={formData.password}
+                  onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Departemen</label>
-                <Select
-                  value={formData.department}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, department: value }))
-                  }
-                >
+                <Label>Departemen</Label>
+                <Select value={formData.department} onValueChange={(v) => setFormData((p) => ({ ...p, department: v }))}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Pilih departemen" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: "active" | "inactive" | "suspended") =>
-                    setFormData((prev) => ({ ...prev, status: value }))
-                  }
-                >
+                <Label>Status</Label>
+                <Select value={formData.status} onValueChange={(v: "active" | "inactive" | "suspended") => setFormData((p) => ({ ...p, status: v }))}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -359,48 +342,18 @@ export default function AdminManagementPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Jabatan</label>
+              <Label>Jabatan</Label>
               <Input
                 placeholder="Masukkan jabatan"
                 value={formData.position}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, position: e.target.value }))
-                }
+                onChange={(e) => setFormData((p) => ({ ...p, position: e.target.value }))}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Batal
-            </Button>
-            <Button onClick={handleSave}>
-              {editingAdmin ? "Simpan Perubahan" : "Tambah Admin"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hapus Admin</DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menghapus admin{" "}
-              <span className="font-medium text-foreground">
-                {deletingAdmin?.name}
-              </span>
-              ? Tindakan ini tidak dapat dibatalkan.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Hapus
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Batal</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="size-4 animate-spin" /> : editingAdmin ? "Simpan Perubahan" : "Tambah Admin"}
             </Button>
           </DialogFooter>
         </DialogContent>

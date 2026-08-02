@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import {
@@ -19,7 +19,6 @@ import {
   Sun,
   Moon,
   Monitor,
-  Shield,
   Calendar,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -30,8 +29,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
-import { employees } from "@/data/mock"
 import { authClient } from "@/lib/auth-client"
+import { apiClient } from "@/lib/api"
+import { toast } from "sonner"
 
 const roleLabels: Record<string, string> = {
   super_admin: "Super Admin",
@@ -40,9 +40,9 @@ const roleLabels: Record<string, string> = {
 }
 
 const roleColors: Record<string, string> = {
-  super_admin: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  admin: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  employee: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  super_admin: "bg-purple-100 text-purple-700",
+  admin: "bg-blue-100 text-blue-700",
+  employee: "bg-emerald-100 text-emerald-700",
 }
 
 function getInitials(name: string): string {
@@ -64,6 +64,24 @@ function getPasswordStrength(password: string): { label: string; color: string; 
   return { label: "Sedang", color: "bg-amber-500", width: "w-3/4" }
 }
 
+interface UserProfile {
+  id: string
+  name: string
+  email: string
+  phone: string
+  nik: string
+  npwp: string
+  address: string
+  bankName: string
+  bankAccount: string
+  role: string
+  position: string
+  department: string
+  joinDate: string
+  image: string | null
+  rewardPoints: number
+}
+
 export default function EmployeeProfilePage() {
   const { data: session } = authClient.useSession()
   const [isEditing, setIsEditing] = useState(false)
@@ -79,11 +97,12 @@ export default function EmployeeProfilePage() {
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system")
   const [compactMode, setCompactMode] = useState(false)
 
-  const CURRENT_EMPLOYEE_ID = session?.user?.id || ""
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
   const [formValues, setFormValues] = useState({
     name: "",
-    email: "",
     phone: "",
     nik: "",
     npwp: "",
@@ -92,45 +111,118 @@ export default function EmployeeProfilePage() {
     bankAccount: "",
   })
 
-  const employee = useMemo(() => {
-    const emp = employees.find((e) => e.id === CURRENT_EMPLOYEE_ID)!
-    setFormValues({
-      name: emp.name,
-      email: emp.email,
-      phone: emp.phone,
-      nik: emp.nik,
-      npwp: emp.npwp,
-      address: emp.address,
-      bankName: emp.bankName,
-      bankAccount: emp.bankAccount,
-    })
-    return emp
-  }, [])
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) return
+    let cancelled = false
+    async function load() {
+      try {
+        setLoading(true)
+        const users = await apiClient.get<UserProfile[]>("/api/employees")
+        if (!cancelled) {
+          const me = users.find((u) => u.id === userId) || null
+          setProfile(me)
+          if (me) {
+            setFormValues({
+              name: me.name,
+              phone: me.phone || "",
+              nik: me.nik || "",
+              npwp: me.npwp || "",
+              address: me.address || "",
+              bankName: me.bankName || "",
+              bankAccount: me.bankAccount || "",
+            })
+          }
+        }
+      } catch (e: unknown) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Gagal memuat profil")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [session])
 
   const handleEdit = () => {
     setIsEditing(true)
   }
 
-  const handleSave = () => {
-    setIsEditing(false)
+  const handleSave = async () => {
+    if (!profile) return
+    setSaving(true)
+    try {
+      const updated = await apiClient.put<UserProfile>("/api/employees", {
+        id: profile.id,
+        ...formValues,
+      })
+      setProfile(updated)
+      setIsEditing(false)
+      toast.success("Profil berhasil disimpan")
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal menyimpan profil")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleCancel = () => {
-    const emp = employees.find((e) => e.id === CURRENT_EMPLOYEE_ID)!
-    setFormValues({
-      name: emp.name,
-      email: emp.email,
-      phone: emp.phone,
-      nik: emp.nik,
-      npwp: emp.npwp,
-      address: emp.address,
-      bankName: emp.bankName,
-      bankAccount: emp.bankAccount,
-    })
+    if (profile) {
+      setFormValues({
+        name: profile.name,
+        phone: profile.phone || "",
+        nik: profile.nik || "",
+        npwp: profile.npwp || "",
+        address: profile.address || "",
+        bankName: profile.bankName || "",
+        bankAccount: profile.bankAccount || "",
+      })
+    }
     setIsEditing(false)
   }
 
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error("Password tidak cocok")
+      return
+    }
+    if (newPassword.length < 8) {
+      toast.error("Password minimal 8 karakter")
+      return
+    }
+    try {
+      await authClient.changePassword({
+        currentPassword,
+        newPassword,
+      })
+      toast.success("Password berhasil diubah")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal mengubah password")
+    }
+  }
+
   const passwordStrength = getPasswordStrength(newPassword)
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="p-4 text-center text-gray-500">
+        Profil tidak ditemukan
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,18 +234,18 @@ export default function EmployeeProfilePage() {
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-6 sm:flex-row">
           <Avatar size="lg">
-            <AvatarFallback className="text-lg">{getInitials(employee.name)}</AvatarFallback>
+            <AvatarFallback className="text-lg">{getInitials(profile.name)}</AvatarFallback>
           </Avatar>
           <div className="text-center sm:text-left">
-            <h2 className="text-xl font-bold">{employee.name}</h2>
+            <h2 className="text-xl font-bold">{profile.name}</h2>
             <p className="text-muted-foreground">
-              {employee.position} · {employee.department}
+              {profile.position} · {profile.department}
             </p>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <Badge className={roleColors[employee.role]}>{roleLabels[employee.role]}</Badge>
+              <Badge className={roleColors[profile.role]}>{roleLabels[profile.role]}</Badge>
               <Badge variant="secondary">
                 <Calendar className="size-3" />
-                Bergabung {format(new Date(employee.joinDate), "dd MMMM yyyy", { locale: id })}
+                Bergabung {format(new Date(profile.joinDate), "dd MMMM yyyy", { locale: id })}
               </Badge>
             </div>
           </div>
@@ -187,9 +279,9 @@ export default function EmployeeProfilePage() {
                       <X className="size-4" />
                       Batal
                     </Button>
-                    <Button onClick={handleSave}>
+                    <Button onClick={handleSave} disabled={saving}>
                       <Check className="size-4" />
-                      Simpan
+                      {saving ? "Menyimpan..." : "Simpan"}
                     </Button>
                   </div>
                 )}
@@ -216,9 +308,8 @@ export default function EmployeeProfilePage() {
                     <Input
                       className="pl-9"
                       type="email"
-                      disabled={!isEditing}
-                      value={formValues.email}
-                      onChange={(e) => setFormValues({ ...formValues, email: e.target.value })}
+                      disabled
+                      value={profile.email}
                     />
                   </div>
                 </div>
@@ -366,6 +457,7 @@ export default function EmployeeProfilePage() {
                   !confirmPassword ||
                   newPassword !== confirmPassword
                 }
+                onClick={handleChangePassword}
               >
                 <Lock className="size-4" />
                 Simpan Password

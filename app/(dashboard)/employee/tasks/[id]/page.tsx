@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { ArrowLeft, Phone, MessageCircle, MapPin, Camera, PlayCircle, CheckCircle2 } from "lucide-react"
@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-import { tasks, timelineEvents, employees } from "@/data/mock"
-import type { TaskCategory, TaskPriority, TaskStatus } from "@/types"
+import { apiClient } from "@/lib/api"
+import { toast } from "sonner"
+import type { Task, TaskCategory, TaskPriority, TaskStatus } from "@/types"
 
 const categoryColor: Record<TaskCategory, string> = {
   installation: "bg-blue-500/10 text-blue-600 border-blue-500/20",
@@ -76,22 +77,62 @@ function formatDateTime(dateStr: string): string {
   })
 }
 
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
 export default function TaskDetailPage() {
   const params = useParams()
   const taskId = params.id as string
   const [noteText, setNoteText] = useState("")
+  const [task, setTask] = useState<Task | null>(null)
+  const [taskTimeline, setTaskTimeline] = useState<Array<{
+    id: string
+    status: TaskStatus
+    description: string | null
+    timestamp: string
+    employeeName: string | null
+  }>>([])
+  const [loading, setLoading] = useState(true)
 
-  const task = tasks.find((t) => t.id === taskId)
-  const taskTimeline = timelineEvents
-    .filter((e) => e.taskId === taskId)
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        setLoading(true)
+        const list = await apiClient.get<Task[]>("/api/tasks")
+        if (!cancelled) {
+          const found = list.find((t) => t.id === taskId) || null
+          setTask(found)
+        }
+        const events = await apiClient.get<Array<{
+          id: string
+          status: TaskStatus
+          description: string | null
+          timestamp: string
+          employeeName: string | null
+        }>>("/api/timeline-events", { taskId })
+        if (!cancelled) {
+          const sorted = events.sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          )
+          setTaskTimeline(sorted)
+        }
+      } catch (e: unknown) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Gagal memuat data")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    if (taskId) load()
+    return () => {
+      cancelled = true
+    }
+  }, [taskId])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
 
   if (!task) {
     return (
@@ -252,46 +293,78 @@ export default function TaskDetailPage() {
         </CardContent>
       </Card>
 
-      {task.attachments.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Lampiran</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {task.attachments.map((file) => (
-                <Badge key={file} variant="secondary" className="text-xs">
-                  {file}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {task.attachments ? (() => {
+        let atts: string[] = []
+        const attStr = task.attachments as unknown as string
+        try { atts = JSON.parse(attStr) } catch { atts = attStr ? [attStr] : [] }
+        return atts.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Lampiran</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {atts.map((file, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs">
+                    {file}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null
+      })() : null}
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Catatan</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          {task.notes.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {task.notes.map((note, idx) => (
-                <div key={idx} className="rounded-xl bg-muted px-3 py-2 text-sm">
-                  {note}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Belum ada catatan</p>
-          )}
+          {(() => {
+            let notes: string[] = []
+            const notesStr = (task.notes as unknown as string) || "[]"
+            try { notes = JSON.parse(notesStr) } catch { notes = notesStr ? [notesStr] : [] }
+            return notes.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {notes.map((note, idx) => (
+                  <div key={idx} className="rounded-xl bg-muted px-3 py-2 text-sm">
+                    {note}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Belum ada catatan</p>
+            )
+          })()}
           <Textarea
             placeholder="Tambahkan catatan..."
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             className="min-h-20"
           />
-          <Button size="sm" className="w-full sm:w-auto" disabled={!noteText.trim()}>
+          <Button
+            size="sm"
+            className="w-full sm:w-auto"
+            disabled={!noteText.trim()}
+            onClick={async () => {
+              if (!noteText.trim()) return
+              try {
+                let notes: string[] = []
+                const notesStr = (task.notes as unknown as string) || "[]"
+                try { notes = JSON.parse(notesStr) } catch { notes = notesStr ? [notesStr] : [] }
+                notes.push(noteText.trim())
+                await apiClient.put("/api/tasks", {
+                  id: task.id,
+                  notes: JSON.stringify(notes),
+                })
+                setTask({ ...task, notes: JSON.stringify(notes) as unknown as string[] })
+                setNoteText("")
+                toast.success("Catatan ditambahkan")
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : "Gagal menambah catatan")
+              }
+            }}
+          >
             Kirim Catatan
           </Button>
         </CardContent>
@@ -299,7 +372,23 @@ export default function TaskDetailPage() {
 
       <div className="flex flex-col gap-2 pt-2">
         {task.status === "pending" && (
-          <Button className="w-full" size="lg">
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={async () => {
+              try {
+                await apiClient.put("/api/tasks", {
+                  id: task.id,
+                  status: "in_progress",
+                  startedAt: new Date().toISOString(),
+                })
+                toast.success("Tugas dimulai")
+                setTask({ ...task, status: "in_progress" })
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : "Gagal memulai tugas")
+              }
+            }}
+          >
             <PlayCircle className="size-4" />
             Mulai Tugas
           </Button>
@@ -310,7 +399,23 @@ export default function TaskDetailPage() {
               <Camera className="size-4" />
               Upload Bukti
             </Button>
-            <Button className="w-full" size="lg">
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={async () => {
+                try {
+                  await apiClient.put("/api/tasks", {
+                    id: task.id,
+                    status: "completed",
+                    completedAt: new Date().toISOString(),
+                  })
+                  toast.success(`Tugas selesai! +${task.rewardPoints} poin`)
+                  setTask({ ...task, status: "completed" })
+                } catch (e: unknown) {
+                  toast.error(e instanceof Error ? e.message : "Gagal menyelesaikan tugas")
+                }
+              }}
+            >
               <CheckCircle2 className="size-4" />
               Selesaikan Tugas
             </Button>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { task, timelineEvent } from "@/lib/schema";
+import { task } from "@/lib/schema";
 import { eq, desc, and } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(task.createdAt));
 
     return NextResponse.json(tasks);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
   }
 }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json(newTask[0], { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
   }
 }
@@ -85,7 +85,7 @@ export async function PUT(request: NextRequest) {
     }
 
     return NextResponse.json(updated[0]);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to update task" }, { status: 500 });
   }
 }
@@ -109,7 +109,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json({ message: "Task deleted" });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to delete task" }, { status: 500 });
   }
 }

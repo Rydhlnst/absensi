@@ -69,7 +69,7 @@ export default function RolesPermissionsPage() {
       <Separator />
 
       <div className="grid gap-6 md:grid-cols-3">
-        {roles.map((role, index) => {
+        {roles.map((role) => {
           const Icon = role.icon
           return (
             <div key={role.name}>

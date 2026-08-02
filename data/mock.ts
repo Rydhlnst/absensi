@@ -1188,10 +1188,6 @@ function generateIndonesianAddress(city: string): string {
   return `${streets[Math.floor(Math.random() * streets.length)]} No. ${Math.floor(Math.random() * 100) + 1}, ${city}`;
 }
 
-function randomArrayItem<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
 function padZero(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -1199,7 +1195,6 @@ function padZero(n: number): string {
 export const tasks: Task[] = Array.from({ length: 100 }, (_, i) => {
   const template = taskTemplates[i % taskTemplates.length];
   const customer = customers[i % customers.length];
-  const employee = employees[i % employees.length];
   const assignedEmployees = employees.filter(e => e.position === 'Teknisi' || e.position === 'Driver');
   const assignedTo = i % 5 === 0 ? null : assignedEmployees[i % assignedEmployees.length].id;
   const statuses: Task['status'][] = ['pending', 'in_progress', 'completed', 'cancelled', 'on_hold'];

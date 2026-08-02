@@ -28,7 +28,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { getAvatarUrl } from "@/lib/utils"
+
 
 interface AppSidebarProps {
   role: Role
@@ -78,10 +78,10 @@ function SidebarMenuContent({ menus }: { menus: MenuItem[] }) {
           <SidebarMenuItem key={item.url}>
             <Link
               href={item.url}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
                 isActive
                   ? "bg-primary text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
               }`}
             >
               <item.icon className="size-5 shrink-0" />
@@ -94,19 +94,33 @@ function SidebarMenuContent({ menus }: { menus: MenuItem[] }) {
   )
 }
 
-function AppSidebar({ role, user }: AppSidebarProps) {
+function AndarLogo() {
+  return (
+    <div className="flex flex-col items-center gap-1 py-3">
+      <div className="flex items-center gap-2">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-red-600 to-red-700 shadow-sm">
+          <span className="text-white font-extrabold text-lg">M</span>
+        </div>
+        <div className="flex flex-col leading-none">
+          <span className="text-2xl font-extrabold text-red-600 tracking-tight">ANDAR.NET</span>
+          <span className="text-[9px] text-gray-500 tracking-wider uppercase mt-0.5 font-semibold">
+            PT. ANDAR KARYA GEMILANG
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AppSidebar({ role }: AppSidebarProps) {
   const menus = getMenusByRole(role)
 
   return (
     <Sidebar collapsible="offcanvas" className="border-r border-gray-200 bg-white">
-      <SidebarHeader className="px-4 py-4">
-        <div className="flex flex-col">
-          <span className="text-xl font-extrabold text-primary tracking-tight">ABSENSI</span>
-          <span className="text-xs text-gray-400 tracking-widest uppercase">Field Management</span>
-        </div>
+      <SidebarHeader className="px-3 py-3 border-b border-gray-100">
+        <AndarLogo />
       </SidebarHeader>
-      <SidebarSeparator />
-      <SidebarContent className="py-2">
+      <SidebarContent className="py-3">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenuContent menus={menus} />
@@ -115,7 +129,7 @@ function AppSidebar({ role, user }: AppSidebarProps) {
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="px-4 py-3">
-        <p className="text-xs text-gray-400 text-center">Operasional Sistem Stabil</p>
+        <p className="text-xs text-gray-500 text-center font-medium">Operasional Sistem Stabil</p>
       </SidebarFooter>
     </Sidebar>
   )

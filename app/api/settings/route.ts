@@ -20,7 +20,7 @@ export async function GET() {
     }
 
     return NextResponse.json(settings[0]);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
   }
 }
@@ -28,7 +28,8 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, ...updates } = body;
+    const updates: Record<string, unknown> = { ...body };
+    delete updates.id;
 
     const existing = await db
       .select()
@@ -51,7 +52,7 @@ export async function PUT(request: NextRequest) {
       .returning();
 
     return NextResponse.json(updated[0]);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
   }
 }
