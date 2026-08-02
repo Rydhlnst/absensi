@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback, useTransition } from "react"
-import { Loader2, Upload, MapPin, Building2, Trash2, Plus, Star } from "lucide-react"
+import { Loader2, Upload, MapPin, Building2, Trash2, Plus, Star, Crosshair } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -105,6 +105,7 @@ export default function AdminSettingsPage() {
     isActive: true,
   })
   const [deletingBranchId, setDeletingBranchId] = useState<string | null>(null)
+  const [gettingLocation, setGettingLocation] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -291,6 +292,36 @@ export default function AdminSettingsPage() {
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Gagal menghapus kantor cabang")
     }
+  }
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation tidak didukung browser ini")
+      return
+    }
+    setGettingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude.toFixed(6)
+        const lng = position.coords.longitude.toFixed(6)
+        setBranchForm((f) => ({ ...f, latitude: lat, longitude: lng }))
+        // Reverse geocode to get address
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=id`)
+          const data = await res.json()
+          if (data.display_name) {
+            setBranchForm((f) => ({ ...f, address: data.display_name.split(",").slice(0, 3).join(",").trim() }))
+          }
+        } catch { /* ignore */ }
+        setGettingLocation(false)
+        toast.success("Lokasi berhasil dideteksi")
+      },
+      () => {
+        setGettingLocation(false)
+        toast.error("Gagal mendapatkan lokasi. Pastikan GPS aktif.")
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
   }
 
   const fieldClass = "w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -696,6 +727,41 @@ export default function AdminSettingsPage() {
                 />
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={getCurrentLocation}
+              disabled={gettingLocation}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+            >
+              {gettingLocation ? (
+                <><Loader2 className="size-4 animate-spin" /> Mendeteksi lokasi...</>
+              ) : (
+                <><Crosshair className="size-4" /> Ambil Lokasi Saat Ini</>
+              )}
+            </button>
+
+            {branchForm.latitude && branchForm.longitude && (
+              <div className="rounded-xl overflow-hidden border border-gray-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=600&height=300&center=lonlat:${branchForm.longitude},${branchForm.latitude}&zoom=15&marker=lonlat:${branchForm.longitude},${branchForm.latitude};color:%23ff0000;size:medium&apiKey=demo`}
+                  alt="Map preview"
+                  className="w-full h-40 object-cover bg-gray-100"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none"
+                    e.currentTarget.parentElement!.innerHTML = `
+                      <div class="w-full h-40 bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+                        <div class="text-center">
+                          <svg class="size-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                          <p class="text-xs text-gray-500">${branchForm.latitude}, ${branchForm.longitude}</p>
+                        </div>
+                      </div>
+                    `
+                  }}
+                />
+              </div>
+            )}
 
             <div>
               <Label className="text-xs font-semibold">Radius GPS (Meter)</Label>

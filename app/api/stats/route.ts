@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { user, attendance, task } from "@/lib/schema";
-import { eq, and, count } from "drizzle-orm";
+import { eq, and, count, gte, sql } from "drizzle-orm";
 
 export async function GET() {
   try {
     const today = new Date().toISOString().split("T")[0];
+    const monthPrefix = today.slice(0, 7); // "2026-08"
 
     const totalEmployeesResult = await db
       .select({ value: count() })
@@ -71,7 +72,34 @@ export async function GET() {
     const pendingTasks = (pendingTasksResult[0]?.value ?? 0) + (inProgressTasksResult[0]?.value ?? 0);
     const completedTasks = completedTasksResult[0]?.value ?? 0;
     const totalTasks = totalTasksResult[0]?.value ?? 0;
-    const monthlySalary = presentToday * 200000;
+
+    // Calculate real running salary for current month
+    // Get all present/late attendance for this month with employee salary
+    const monthAttendance = await db
+      .select({
+        employeeId: attendance.employeeId,
+        workingDuration: attendance.workingDuration,
+        salary: user.salary,
+      })
+      .from(attendance)
+      .innerJoin(user, eq(attendance.employeeId, user.id))
+      .where(
+        and(
+          gte(attendance.date, `${monthPrefix}-01`),
+          sql`${attendance.date} <= ${today}`,
+          sql`${attendance.status} IN ('present', 'late')`
+        )
+      );
+
+    // Running salary = sum of (workingDuration / 60 / 8 / 22 * monthlySalary) per employee per day
+    const monthlySalary = monthAttendance.reduce((total, record) => {
+      const empSalary = record.salary || 0;
+      if (empSalary <= 0) return total;
+      const duration = record.workingDuration || 0;
+      // Daily rate = salary / 22 days, Hourly rate = daily / 8 hours, Per minute = hourly / 60
+      const perMinuteRate = empSalary / 22 / 8 / 60;
+      return total + Math.round(duration * perMinuteRate);
+    }, 0);
 
     return NextResponse.json({
       totalUsers,

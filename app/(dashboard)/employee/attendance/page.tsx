@@ -41,6 +41,17 @@ interface CompanySetting {
   gpsRadius?: number | null
 }
 
+interface OfficeBranch {
+  id: string
+  name: string
+  address: string
+  latitude: number
+  longitude: number
+  radius: number
+  isMain: boolean
+  isActive: boolean
+}
+
 function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
@@ -51,6 +62,7 @@ export default function AttendancePage() {
   const { data: session } = authClient.useSession()
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [settings, setSettings] = useState<CompanySetting | null>(null)
+  const [branches, setBranches] = useState<OfficeBranch[]>([])
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [workingMinutes, setWorkingMinutes] = useState(0)
@@ -68,12 +80,14 @@ export default function AttendancePage() {
     if (!currentUserId) return
     try {
       setLoading(true)
-      const [att, set] = await Promise.all([
+      const [att, set, branchList] = await Promise.all([
         apiClient.get<AttendanceRecord[]>("/api/attendance", { employeeId: currentUserId }),
         apiClient.get<CompanySetting>("/api/settings"),
+        apiClient.get<OfficeBranch[]>("/api/branches"),
       ])
       setRecords(att)
       setSettings(set)
+      setBranches(branchList)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Gagal memuat data"
       toast.error(message)
@@ -128,13 +142,49 @@ export default function AttendancePage() {
     if (!currentUserId) return
     setSubmitting(true)
     try {
+      // Get user's GPS location
+      let userLocation: { latitude: number; longitude: number } | null = null
+      if (navigator.geolocation) {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+            })
+          })
+          userLocation = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          }
+        } catch {
+          // GPS not available - continue without location
+        }
+      }
+
+      // Validate against branches if available
+      if (userLocation && branches.length > 0) {
+        const { checkBranchProximity } = await import("@/lib/geo")
+        const result = checkBranchProximity(
+          userLocation.latitude,
+          userLocation.longitude,
+          branches
+        )
+        if (!result.isWithinRadius) {
+          toast.error(`Anda berada ${result.distance}m dari kantor terdekat (${result.branchName}). Maksimal jarak adalah ${branches.find(b => b.name === result.branchName)?.radius || 100}m.`)
+          setSubmitting(false)
+          return
+        }
+      }
+
       await apiClient.post("/api/attendance", {
         employeeId: currentUserId,
         date: todayStr,
         checkIn: new Date().toISOString(),
-        checkInLocation: settings?.latitude && settings?.longitude
-          ? JSON.stringify({ latitude: settings.latitude, longitude: settings.longitude })
-          : null,
+        checkInLocation: userLocation
+          ? JSON.stringify(userLocation)
+          : settings?.latitude && settings?.longitude
+            ? JSON.stringify({ latitude: settings.latitude, longitude: settings.longitude })
+            : null,
         status: "present",
         isLate: false,
         lateMinutes: 0,

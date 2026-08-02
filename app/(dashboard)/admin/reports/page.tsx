@@ -47,6 +47,12 @@ interface Employee {
   role: string
 }
 
+interface CompanySettings {
+  name?: string
+  address?: string
+  phone?: string
+}
+
 type TimeFilter = "harian" | "bulanan" | "tahunan"
 
 export default function AdminReportsPage() {
@@ -57,6 +63,7 @@ export default function AdminReportsPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [attendanceList, setAttendanceList] = useState<Attendance[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [companySettings, setCompanySettings] = useState<CompanySettings>({})
   const [loading, setLoading] = useState(true)
 
   const currentYear = new Date().getFullYear()
@@ -65,12 +72,14 @@ export default function AdminReportsPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
-      const [att, emps] = await Promise.all([
+      const [att, emps, settings] = await Promise.all([
         apiClient.get<Attendance[]>("/api/attendance"),
         apiClient.get<Employee[]>("/api/employees"),
+        apiClient.get<CompanySettings>("/api/settings"),
       ])
       setAttendanceList(att)
       setEmployees(emps)
+      if (settings) setCompanySettings(settings)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Gagal memuat data")
     } finally {
@@ -141,9 +150,9 @@ export default function AdminReportsPage() {
     generatePDF({
       title: "Laporan Absensi Karyawan",
       subtitle: `Filter: ${getFilterLabel()}`,
-      companyName: "ANDAR.NET",
-      companyAddress: "Jl. TB Simatupang No. 88, Lt. 5, Jakarta Selatan",
-      companyPhone: "+622129529666",
+      companyName: companySettings.name || "ANDAR.NET",
+      companyAddress: companySettings.address || "Jl. TB Simatupang No. 88, Lt. 5, Jakarta Selatan",
+      companyPhone: companySettings.phone || "+622129529666",
       filename: `laporan-absensi-${format(new Date(), "yyyyMMdd-HHmmss")}`,
       summary: [
         { label: "Total Gaji", value: formatCurrency(stats.totalSalary) },
