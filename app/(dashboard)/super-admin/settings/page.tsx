@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { apiClient } from "@/lib/api"
+import { ProfileSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 
 interface CompanySettings {
@@ -92,11 +93,7 @@ export default function CompanySettingsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <ProfileSkeleton />
   }
 
   return (

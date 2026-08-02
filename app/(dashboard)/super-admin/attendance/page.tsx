@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { apiClient } from "@/lib/api"
+import { AdminTableSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 15
@@ -145,11 +146,7 @@ export default function SuperAdminAttendancePage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <AdminTableSkeleton rows={8} />
   }
 
   return (

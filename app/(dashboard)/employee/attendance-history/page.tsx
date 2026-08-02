@@ -5,6 +5,7 @@ import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
+import { AttendanceHistorySkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 import type { AttendanceStatus } from "@/types"
 
@@ -142,11 +143,7 @@ export default function AttendanceHistoryPage() {
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <AttendanceHistorySkeleton />
   }
 
   return (

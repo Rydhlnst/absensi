@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
+import { LeavePageSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 import Link from "next/link"
 
@@ -120,11 +121,7 @@ export default function LeavePage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <LeavePageSkeleton />
   }
 
   return (

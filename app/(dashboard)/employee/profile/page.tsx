@@ -31,6 +31,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
+import { ProfileSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 
 const roleLabels: Record<string, string> = {
@@ -209,11 +210,7 @@ export default function EmployeeProfilePage() {
   const passwordStrength = getPasswordStrength(newPassword)
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <ProfileSkeleton />
   }
 
   if (!profile) {

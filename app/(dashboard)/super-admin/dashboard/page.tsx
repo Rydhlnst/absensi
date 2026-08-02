@@ -18,6 +18,7 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiClient } from "@/lib/api"
+import { AdminDashboardSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 
 interface Stats {
@@ -107,11 +108,7 @@ export default function SuperAdminDashboardPage() {
   })()
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <AdminDashboardSkeleton />
   }
 
   return (

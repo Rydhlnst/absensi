@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Select,
   SelectContent,
@@ -25,8 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { apiClient } from "@/lib/api"
+import { AdminTableSkeleton } from "@/components/skeletons"
 import { getAvatarUrl } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
 
 interface LogEntry {
@@ -108,11 +109,7 @@ export default function SystemLogsPage() {
   )
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <AdminTableSkeleton rows={8} />
   }
 
   return (

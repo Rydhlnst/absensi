@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
+import { TaskListSkeleton } from "@/components/skeletons"
 import type { Task, TaskCategory } from "@/types"
 import { toast } from "sonner"
 
@@ -245,8 +246,15 @@ export default function EmployeeTasksPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="min-h-screen bg-gray-50">
+        <div className="p-4 space-y-4">
+          {/* Tabs skeleton */}
+          <div className="flex gap-2">
+            <div className="flex-1 h-12 rounded-xl bg-gray-200 animate-pulse" />
+            <div className="flex-1 h-12 rounded-xl bg-gray-200 animate-pulse" />
+          </div>
+          <TaskListSkeleton count={3} />
+        </div>
       </div>
     )
   }

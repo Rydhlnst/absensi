@@ -57,6 +57,7 @@ function getMenusByRole(role: Role): MenuItem[] {
     case "admin":
       return [
         { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
+        { title: "Monitoring Absensi", url: "/admin/attendance", icon: CalendarCheck },
         { title: "Kelola Tugas", url: "/admin/tasks", icon: ClipboardList },
         { title: "Data Teknisi", url: "/admin/employees", icon: Users },
         { title: "Hadiah & Klaim", url: "/admin/rewards", icon: Gift },

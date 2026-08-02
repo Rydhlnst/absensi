@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { Lock, RefreshCw } from "lucide-react"
+import { Lock, RefreshCw, Clock, MapPin, FileText, Home } from "lucide-react"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
+import { DashboardSkeleton } from "@/components/skeletons"
 
 interface AttendanceRecord {
   id: string
@@ -74,37 +75,18 @@ export default function EmployeeDashboardPage() {
   }, [currentUserId])
 
   useEffect(() => {
-    if (!currentUserId) return
-    let cancelled = false
-    async function load() {
-      try {
-        setLoading(true)
-        const [att, prof] = await Promise.all([
-          apiClient.get<AttendanceRecord[]>("/api/attendance", {
-            employeeId: currentUserId,
-          }),
-          apiClient.get<UserProfile[]>("/api/employees").then((users) => {
-            return users.find((u) => u.id === currentUserId) || null
-          }),
-        ])
-        if (!cancelled) {
-          setAttendanceRecords(att)
-          setProfile(prof)
-        }
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : "Gagal memuat data"
-        if (!cancelled) toast.error(message)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [currentUserId])
+    void loadData()
+  }, [loadData])
 
-  const todayAttendance = attendanceRecords.find((a) => a.employeeId === currentUserId && a.date === todayStr)
+  const todayAttendance = useMemo(
+    () => attendanceRecords.find((a) => a.employeeId === currentUserId && a.date === todayStr),
+    [attendanceRecords, currentUserId, todayStr]
+  )
 
-  const monthRecords = attendanceRecords.filter((a) => a.date.startsWith(format(now, "yyyy-MM")))
+  const monthRecords = useMemo(
+    () => attendanceRecords.filter((a) => a.date.startsWith(format(now, "yyyy-MM"))),
+    [attendanceRecords]
+  )
 
   const monthPresent = monthRecords.filter(
     (a) => a.status === "present" || a.status === "late"
@@ -116,7 +98,10 @@ export default function EmployeeDashboardPage() {
 
   const isAlreadyCheckedIn = !!todayAttendance?.checkIn
   const isAlreadyCheckedOut = !!todayAttendance?.checkOut
-  const checkInTime = todayAttendance?.checkIn ? new Date(todayAttendance.checkIn) : null
+  const checkInTime = useMemo(
+    () => (todayAttendance?.checkIn ? new Date(todayAttendance.checkIn) : null),
+    [todayAttendance?.checkIn]
+  )
   const toleranceExceeded = now.getHours() >= 9
 
   useEffect(() => {
@@ -186,11 +171,7 @@ export default function EmployeeDashboardPage() {
       : "-"
 
   if (loading && !profile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <DashboardSkeleton />
   }
 
   return (
@@ -199,73 +180,54 @@ export default function EmployeeDashboardPage() {
         <div className="flex items-center justify-end">
           <button
             onClick={() => void loadData()}
-            className="flex items-center gap-1.5 rounded-lg bg-white border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+            className="flex items-center gap-1.5 rounded-lg bg-white border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
           >
             <RefreshCw className="size-3" />
             Refresh
           </button>
         </div>
 
+        {/* Kehadiran Hari Ini Card */}
         <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-base font-bold text-gray-900 capitalize">kehadiran hari ini</span>
+            <span className="text-base font-bold text-gray-900 capitalize">Kehadiran Hari Ini</span>
             <span className={`rounded-lg px-3 py-1 text-xs font-bold ${statusBadge.className}`}>
               {statusBadge.label}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-gray-100 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Durasi Kerja Hari Ini</p>
-              <p className="mt-1 font-mono text-lg font-bold text-blue-600">
+            <div className="rounded-xl bg-blue-50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">Durasi Kerja Hari Ini</p>
+              <p className="mt-1 font-mono text-xl font-extrabold text-blue-600">
                 {formatDurationHMS(workingMinutes)}
               </p>
             </div>
-            <div className="rounded-xl bg-gray-100 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Gaji Hari Ini</p>
-              <p className="mt-1 text-lg font-bold text-gray-900">
+            <div className="rounded-xl bg-green-50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600">Gaji Hari Ini</p>
+              <p className="mt-1 text-lg font-extrabold text-green-600">
                 Rp {isAlreadyCheckedIn ? dailySalary.toLocaleString("id-ID") : "0"}
               </p>
             </div>
           </div>
 
-          <div className="border-t border-gray-100 pt-3 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Jam Masuk</span>
-              <span className="font-semibold text-gray-900">{checkInDisplay}</span>
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div className="rounded-xl bg-gray-50 p-2.5">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Jam Masuk</p>
+              <p className="text-sm font-bold text-gray-900 mt-0.5">{checkInDisplay}</p>
             </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Jam Pulang</span>
-              <span className="font-semibold text-gray-900">{checkOutDisplay}</span>
+            <div className="rounded-xl bg-gray-50 p-2.5">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Jam Pulang</p>
+              <p className="text-sm font-bold text-gray-900 mt-0.5">{checkOutDisplay}</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
-          <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">{currentMonthLabel}</p>
-
-          <div className="rounded-2xl border border-gray-200 p-4 text-center space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Kehadiran</p>
-            <p className="text-2xl font-bold text-green-600">{monthPresent} Hari</p>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 p-4 text-center space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Durasi Kerja</p>
-            <p className="text-2xl font-bold text-blue-600">{formatDurationLong(monthWorkingMinutes)}</p>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 p-4 text-center space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Gaji</p>
-            <p className="text-2xl font-bold text-green-600">
-              Rp {monthSalary.toLocaleString("id-ID")}
-            </p>
-          </div>
-        </div>
-
+        {/* Action Button */}
         {!isAlreadyCheckedIn && !toleranceExceeded && (
           <button
             onClick={() => void handleCheckIn()}
-            className="w-full rounded-2xl bg-green-600 py-3.5 text-sm font-bold text-white hover:bg-green-700 shadow-sm"
+            className="w-full rounded-2xl bg-primary py-3.5 text-sm font-bold text-white hover:bg-primary/90 shadow-md transition-all active:scale-[0.98]"
           >
             Check In Sekarang
           </button>
@@ -273,25 +235,48 @@ export default function EmployeeDashboardPage() {
         {isAlreadyCheckedIn && !isAlreadyCheckedOut && (
           <button
             onClick={() => void handleCheckOut()}
-            className="w-full rounded-2xl bg-red-500 py-3.5 text-sm font-bold text-white hover:bg-red-600 shadow-sm"
+            className="w-full rounded-2xl bg-red-500 py-3.5 text-sm font-bold text-white hover:bg-red-600 shadow-md transition-all active:scale-[0.98]"
           >
             Check Out Sekarang
           </button>
         )}
         {isAlreadyCheckedOut && (
-          <div className="w-full rounded-2xl bg-gray-100 py-3.5 text-center text-sm font-medium text-gray-500">
+          <div className="w-full rounded-2xl bg-green-50 border border-green-200 py-3.5 text-center text-sm font-medium text-green-700">
             Anda sudah check out hari ini
           </div>
         )}
 
+        {/* Absen Ditutup */}
         {toleranceExceeded && !isAlreadyCheckedIn && (
-          <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 flex items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white">
-              <Lock className="size-4 text-blue-600" />
+          <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+              <Lock className="size-4 text-amber-600" />
             </div>
-            <p className="text-sm font-semibold text-blue-900">Absen Masuk Ditutup (Melewati Toleransi)</p>
+            <p className="text-sm font-semibold text-amber-800">Absen Masuk Ditutup (Melewati Toleransi)</p>
           </div>
         )}
+
+        {/* Bulan Ini */}
+        <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+          <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">{currentMonthLabel}</p>
+
+          <div className="rounded-2xl border border-gray-100 p-4 text-center bg-gradient-to-br from-green-50 to-white">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Kehadiran</p>
+            <p className="text-3xl font-extrabold text-green-600 mt-1">{monthPresent} Hari</p>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 p-4 text-center bg-gradient-to-br from-blue-50 to-white">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Durasi Kerja</p>
+            <p className="text-3xl font-extrabold text-blue-600 mt-1">{formatDurationLong(monthWorkingMinutes)}</p>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 p-4 text-center bg-gradient-to-br from-green-50 to-white">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Gaji</p>
+            <p className="text-3xl font-extrabold text-green-600 mt-1">
+              Rp {monthSalary.toLocaleString("id-ID")}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   )

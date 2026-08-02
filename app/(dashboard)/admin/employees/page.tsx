@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { apiClient } from "@/lib/api"
+import { AdminTableSkeleton } from "@/components/skeletons"
 import { getAvatarUrl } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -248,11 +249,7 @@ export default function AdminEmployeesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <AdminTableSkeleton rows={5} />
   }
 
   return (

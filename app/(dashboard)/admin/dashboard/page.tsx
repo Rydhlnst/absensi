@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 
 import { MapPin, BookOpen, HardHat, UserX, Wallet, Layers } from "lucide-react"
 import { apiClient } from "@/lib/api"
+import { AdminDashboardSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 
 function formatCurrency(amount: number): string {
@@ -91,10 +92,15 @@ export default function AdminDashboardPage() {
     <div className="space-y-4">
       <div className="space-y-3">
         {loading ? (
-          <div className="rounded-2xl bg-white p-8 text-center border border-gray-200">
-            <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto" />
-            <p className="text-sm text-gray-500 mt-2">Memuat data...</p>
-          </div>
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-gray-200">
+              <div>
+                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+              </div>
+              <div className="size-14 rounded-2xl bg-gray-200 animate-pulse" />
+            </div>
+          ))
         ) : (
           statCards.map((card) => {
             const displayValue = card.isCurrency

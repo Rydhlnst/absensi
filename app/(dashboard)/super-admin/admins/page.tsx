@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { apiClient } from "@/lib/api"
+import { AdminTableSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 
 interface AdminUser {
@@ -194,11 +195,7 @@ export default function AdminManagementPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <AdminTableSkeleton rows={5} />
   }
 
   return (

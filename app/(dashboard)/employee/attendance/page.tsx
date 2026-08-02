@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
+import { AttendancePageSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 import type { AttendanceStatus } from "@/types"
 
@@ -166,11 +167,7 @@ export default function AttendancePage() {
   }
 
   if (loading && !records.length) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <AttendancePageSkeleton />
   }
 
   return (

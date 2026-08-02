@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { Trophy } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
+import { RewardsSkeleton } from "@/components/skeletons"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getAvatarUrl } from "@/lib/utils"
 import { toast } from "sonner"
@@ -92,11 +93,7 @@ export default function EmployeeRewardsPage() {
   const currentEmployee = employees.find((e) => e.id === currentUserId)
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <RewardsSkeleton />
   }
 
   return (

@@ -96,12 +96,12 @@ function TimeSimulationBar() {
 
 const adminPageTitles: Record<string, string> = {
   dashboard: "DASHBOARD",
+  attendance: "MONITORING ABSENSI",
   tasks: "KELOLA TUGAS",
   employees: "DATA TEKNISI",
   rewards: "HADIAH & KLAIM",
   reports: "LOG & LAPORAN",
   settings: "PENGATURAN SISTEM",
-  attendance: "ABSENSI",
   admins: "MANAJEMEN ADMIN",
   roles: "KELOLA ROLES",
   logs: "LOG SISTEM",
