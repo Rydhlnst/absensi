@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { MapPin, Eye, Plus } from "lucide-react"
+import { MapPin, Eye, Plus, Home, FileText, Map } from "lucide-react"
 import Link from "next/link"
 import {
   Dialog,
@@ -98,12 +98,12 @@ function TaskCard({ task, creatorName }: { task: Task; creatorName?: string }) {
             rel="noopener noreferrer"
             className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
           >
-            <span className="text-blue-500">🗺</span> Google Maps
+            <span className="text-blue-500"><Map className="size-3.5 inline" /></span> Google Maps
           </a>
         </div>
 
         <div className="flex items-start gap-2">
-          <span className="text-sm shrink-0 mt-0.5">🏠</span>
+          <Home className="size-4 text-blue-500 shrink-0 mt-0.5" />
           <p className="text-sm">
             <span className="font-semibold text-gray-900">Detail Alamat:</span>{" "}
             <span className="text-gray-700">{task.addressDetail || "-"}</span>
@@ -111,7 +111,7 @@ function TaskCard({ task, creatorName }: { task: Task; creatorName?: string }) {
         </div>
 
         <div className="flex items-start gap-2">
-          <span className="text-sm shrink-0 mt-0.5">📋</span>
+          <FileText className="size-4 text-amber-500 shrink-0 mt-0.5" />
           <p className="text-sm">
             <span className="font-semibold text-gray-900">Keterangan Tugas:</span>{" "}
             <span className="text-gray-700">{task.description}</span>

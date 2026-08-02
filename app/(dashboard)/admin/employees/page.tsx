@@ -13,6 +13,7 @@ import {
   Lock,
   DollarSign,
   UserPlus,
+  Award,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -299,7 +300,7 @@ export default function AdminEmployeesPage() {
                       <div>
                         <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Total Poin</p>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm">🏅</span>
+                          <Award className="size-4 text-yellow-500 shrink-0" />
                           <span className="text-sm font-bold text-gray-900">{emp.rewardPoints} Poin</span>
                           <button
                             onClick={() => handlePointsAdjust(emp.id, emp.rewardPoints, -10)}

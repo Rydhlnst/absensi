@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { Printer, Share2, Trash2 } from "lucide-react"
+import { Printer, Share2, Trash2, DollarSign, Clock, FileText } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { generatePDF, generateExcel, formatCurrency, formatDateTime } from "@/lib/export"
 import { toast } from "sonner"
@@ -334,7 +334,7 @@ export default function AdminReportsPage() {
             <p className="text-lg font-extrabold text-blue-700 mt-1">{formatCurrency(stats.totalSalary)}</p>
             <p className="text-[10px] text-gray-500 mt-0.5">Akumulasi upah terfilter</p>
           </div>
-          <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-xl shrink-0">💰</div>
+          <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 shrink-0"><DollarSign className="size-5 text-blue-600" /></div>
         </div>
         <div className="rounded-2xl bg-green-50 border border-green-100 p-4 flex items-start justify-between">
           <div>
@@ -344,7 +344,7 @@ export default function AdminReportsPage() {
             </p>
             <p className="text-[10px] text-gray-500 mt-0.5">Jam kerja bersih</p>
           </div>
-          <div className="flex size-10 items-center justify-center rounded-xl bg-green-100 text-xl shrink-0">🕐</div>
+          <div className="flex size-10 items-center justify-center rounded-xl bg-green-100 shrink-0"><Clock className="size-5 text-green-600" /></div>
         </div>
       </div>
 
@@ -354,7 +354,7 @@ export default function AdminReportsPage() {
           <p className="text-2xl font-extrabold text-gray-900 mt-1">{stats.totalLogs} Log</p>
           <p className="text-xs text-gray-500 mt-0.5">Total catatan terfilter</p>
         </div>
-        <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-xl shrink-0">📄</div>
+        <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 shrink-0"><FileText className="size-5 text-blue-600" /></div>
       </div>
 
       <div className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { MapPin, Pencil, Eye, Trash2, Loader2, Plus, Phone, Home, FileText } from "lucide-react"
+import { MapPin, Pencil, Eye, Trash2, Loader2, Plus, Phone, Home, FileText, Map } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -136,7 +136,7 @@ function TaskCard({
             rel="noopener noreferrer"
             className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
           >
-            <span className="text-blue-500">🗺</span> Google Maps
+            <span className="text-blue-500"><Map className="size-3.5 inline" /></span> Google Maps
           </a>
         </div>
 
