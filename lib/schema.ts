@@ -159,6 +159,7 @@ export const companySetting = pgTable("company_setting", {
   address: text("address"),
   phone: text("phone"),
   email: text("email"),
+  logo: text("logo"),
   latitude: real("latitude"),
   longitude: real("longitude"),
   workingStart: text("workingStart").default("08:00"),
@@ -174,6 +175,19 @@ export const companySetting = pgTable("company_setting", {
   billingPoints: integer("billingPoints").default(20),
   repairPoints: integer("repairPoints").default(50),
   inspectionPoints: integer("inspectionPoints").default(30),
+})
+
+export const officeBranch = pgTable("office_branch", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  latitude: real("latitude").notNull(),
+  longitude: real("longitude").notNull(),
+  radius: integer("radius").default(100),
+  isMain: boolean("isMain").default(false),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
 export const timelineEvent = pgTable("timeline_event", {

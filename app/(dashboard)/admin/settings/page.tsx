@@ -1,9 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Loader2 } from "lucide-react"
+import { useState, useEffect, useRef, useCallback, useTransition } from "react"
+import { Loader2, Upload, MapPin, Building2, Trash2, Plus, Star } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
 const timeOptions = ["06.00", "07.00", "08.00", "09.00", "10.00", "11.00", "12.00", "13.00", "14.00", "15.00", "16.00", "17.00", "18.00", "19.00", "20.00"]
 
@@ -28,6 +37,12 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 interface CompanySettings {
   id: string
   name: string | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  logo: string | null
+  latitude: number | null
+  longitude: number | null
   workingStart: string | null
   workingEnd: string | null
   breakStart: string | null
@@ -39,6 +54,19 @@ interface CompanySettings {
   installationPoints: number | null
   repairPoints: number | null
   billingPoints: number | null
+}
+
+interface OfficeBranch {
+  id: string
+  name: string
+  address: string
+  latitude: number
+  longitude: number
+  radius: number
+  isMain: boolean
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export default function AdminSettingsPage() {
@@ -54,60 +82,214 @@ export default function AdminSettingsPage() {
   const [poinGangguan, setPoinGangguan] = useState("50")
   const [poinTagihan, setPoinTagihan] = useState("20")
   const [poinBuatTugas, setPoinBuatTugas] = useState("10")
+
+  const [companyName, setCompanyName] = useState("")
+  const [companyAddress, setCompanyAddress] = useState("")
+  const [companyPhone, setCompanyPhone] = useState("")
+  const [companyEmail, setCompanyEmail] = useState("")
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null)
+  const [companyLat, setCompanyLat] = useState("")
+  const [companyLng, setCompanyLng] = useState("")
+  const [gpsRadius, setGpsRadius] = useState("100")
+
+  const [branches, setBranches] = useState<OfficeBranch[]>([])
+  const [branchDialogOpen, setBranchDialogOpen] = useState(false)
+  const [editingBranch, setEditingBranch] = useState<OfficeBranch | null>(null)
+  const [branchForm, setBranchForm] = useState({
+    name: "",
+    address: "",
+    latitude: "",
+    longitude: "",
+    radius: "100",
+    isMain: false,
+    isActive: true,
+  })
+  const [deletingBranchId, setDeletingBranchId] = useState<string | null>(null)
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        setLoading(true)
-        const data = await apiClient.get<CompanySettings>("/api/settings")
-        if (!cancelled && data) {
-          if (data.workingStart) setCheckInTime(data.workingStart.slice(0, 5).replace(":", "."))
-          if (data.breakStart) setBreakStart(data.breakStart.slice(0, 5).replace(":", "."))
-          if (data.breakEnd) setBreakEnd(data.breakEnd.slice(0, 5).replace(":", "."))
-          if (data.workingEnd) setCheckOutTime(data.workingEnd.slice(0, 5).replace(":", "."))
-          if (data.lateTolerance != null) setToleranceIn(String(data.lateTolerance))
-          if (data.deviceBinding != null) setDeviceBinding(data.deviceBinding)
-          if (data.taskSalaryFreeze != null) setTaskSalaryFreeze(data.taskSalaryFreeze)
-          if (data.installationPoints != null) setPoinPemasangan(String(data.installationPoints))
-          if (data.repairPoints != null) setPoinGangguan(String(data.repairPoints))
-          if (data.billingPoints != null) setPoinTagihan(String(data.billingPoints))
-        }
-      } catch (e: unknown) {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : "Gagal memuat pengaturan")
-      } finally {
-        if (!cancelled) setLoading(false)
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const [settings, branchList] = await Promise.all([
+        apiClient.get<CompanySettings>("/api/settings", undefined, { useLocalCache: true, cacheTTL: 5 * 60 * 1000 }),
+        apiClient.get<OfficeBranch[]>("/api/branches", undefined, { useLocalCache: true, cacheTTL: 5 * 60 * 1000 }),
+      ])
+      if (settings) {
+        if (settings.workingStart) setCheckInTime(settings.workingStart.slice(0, 5).replace(":", "."))
+        if (settings.breakStart) setBreakStart(settings.breakStart.slice(0, 5).replace(":", "."))
+        if (settings.breakEnd) setBreakEnd(settings.breakEnd.slice(0, 5).replace(":", "."))
+        if (settings.workingEnd) setCheckOutTime(settings.workingEnd.slice(0, 5).replace(":", "."))
+        if (settings.lateTolerance != null) setToleranceIn(String(settings.lateTolerance))
+        if (settings.deviceBinding != null) setDeviceBinding(settings.deviceBinding)
+        if (settings.taskSalaryFreeze != null) setTaskSalaryFreeze(settings.taskSalaryFreeze)
+        if (settings.installationPoints != null) setPoinPemasangan(String(settings.installationPoints))
+        if (settings.repairPoints != null) setPoinGangguan(String(settings.repairPoints))
+        if (settings.billingPoints != null) setPoinTagihan(String(settings.billingPoints))
+        setCompanyName(settings.name || "")
+        setCompanyAddress(settings.address || "")
+        setCompanyPhone(settings.phone || "")
+        setCompanyEmail(settings.email || "")
+        setCompanyLogo(settings.logo || null)
+        if (settings.latitude != null) setCompanyLat(String(settings.latitude))
+        if (settings.longitude != null) setCompanyLng(String(settings.longitude))
+        if (settings.gpsRadius != null) setGpsRadius(String(settings.gpsRadius))
       }
-    }
-    load()
-    return () => {
-      cancelled = true
+      if (branchList) setBranches(branchList)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal memuat pengaturan")
+    } finally {
+      setLoading(false)
     }
   }, [])
+
+  const [, startTransition] = useTransition()
+
+  useEffect(() => {
+    startTransition(() => {
+      void loadData()
+    })
+  }, [loadData, startTransition])
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Ukuran logo maksimal 2MB")
+      return
+    }
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setCompanyLogo(reader.result as string)
+      toast.success("Logo berhasil diupload (klik Simpan untuk menyimpan)")
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Browser tidak mendukung geolocation")
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCompanyLat(String(pos.coords.latitude.toFixed(6)))
+        setCompanyLng(String(pos.coords.longitude.toFixed(6)))
+        toast.success("Lokasi berhasil dideteksi")
+      },
+      () => {
+        toast.error("Gagal mendeteksi lokasi. Pastikan GPS aktif dan izinkan akses lokasi.")
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }
 
   const handleSave = async () => {
     setSaving(true)
     try {
       await apiClient.put("/api/settings", {
         id: "default",
+        name: companyName,
+        address: companyAddress,
+        phone: companyPhone,
+        email: companyEmail,
+        logo: companyLogo,
+        latitude: companyLat ? parseFloat(companyLat) : null,
+        longitude: companyLng ? parseFloat(companyLng) : null,
         workingStart: checkInTime.replace(".", ":"),
         workingEnd: checkOutTime.replace(".", ":"),
         breakStart: breakStart.replace(".", ":"),
         breakEnd: breakEnd.replace(".", ":"),
         lateTolerance: parseInt(toleranceIn) || 0,
+        gpsRadius: parseInt(gpsRadius) || 100,
         deviceBinding,
         taskSalaryFreeze,
         installationPoints: parseInt(poinPemasangan) || 0,
         repairPoints: parseInt(poinGangguan) || 0,
         billingPoints: parseInt(poinTagihan) || 0,
       })
+      const { removeCache } = await import("@/lib/cache")
+      removeCache("GET:/api/settings")
       toast.success("Pengaturan berhasil disimpan!")
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Gagal menyimpan pengaturan")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const openBranchDialog = (branch: OfficeBranch | null = null) => {
+    if (branch) {
+      setEditingBranch(branch)
+      setBranchForm({
+        name: branch.name,
+        address: branch.address,
+        latitude: String(branch.latitude),
+        longitude: String(branch.longitude),
+        radius: String(branch.radius),
+        isMain: branch.isMain,
+        isActive: branch.isActive,
+      })
+    } else {
+      setEditingBranch(null)
+      setBranchForm({
+        name: "",
+        address: "",
+        latitude: "",
+        longitude: "",
+        radius: "100",
+        isMain: false,
+        isActive: true,
+      })
+    }
+    setBranchDialogOpen(true)
+  }
+
+  const handleSaveBranch = async () => {
+    if (!branchForm.name || !branchForm.address || !branchForm.latitude || !branchForm.longitude) {
+      toast.error("Semua field wajib diisi")
+      return
+    }
+    try {
+      const payload = {
+        name: branchForm.name,
+        address: branchForm.address,
+        latitude: parseFloat(branchForm.latitude),
+        longitude: parseFloat(branchForm.longitude),
+        radius: parseInt(branchForm.radius) || 100,
+        isMain: branchForm.isMain,
+        isActive: branchForm.isActive,
+      }
+      if (editingBranch) {
+        await apiClient.put("/api/branches", { id: editingBranch.id, ...payload })
+        toast.success("Kantor cabang berhasil diperbarui")
+      } else {
+        await apiClient.post("/api/branches", payload)
+        toast.success("Kantor cabang berhasil ditambahkan")
+      }
+      setBranchDialogOpen(false)
+      const { removeCache } = await import("@/lib/cache")
+      removeCache("GET:/api/branches")
+      const data = await apiClient.get<OfficeBranch[]>("/api/branches", undefined, { useLocalCache: false })
+      setBranches(data)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal menyimpan kantor cabang")
+    }
+  }
+
+  const handleDeleteBranch = async (id: string) => {
+    try {
+      await apiClient.delete(`/api/branches?id=${id}`)
+      toast.success("Kantor cabang berhasil dihapus")
+      setDeletingBranchId(null)
+      const { removeCache } = await import("@/lib/cache")
+      removeCache("GET:/api/branches")
+      const data = await apiClient.get<OfficeBranch[]>("/api/branches", undefined, { useLocalCache: false })
+      setBranches(data)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal menghapus kantor cabang")
     }
   }
 
@@ -124,7 +306,247 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-4">
+      {/* Company Identity */}
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-4">
+        <h2 className="text-base font-bold text-primary flex items-center gap-2">
+          <Building2 className="size-4" />
+          Identitas Perusahaan
+        </h2>
+
+        {/* Logo Upload */}
+        <div className="flex items-center gap-4">
+          <div className="shrink-0">
+            {companyLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={companyLogo}
+                alt="Logo"
+                className="size-20 rounded-xl object-contain border border-gray-200 bg-white p-1"
+              />
+            ) : (
+              <div className="size-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+                <Building2 className="size-6 text-gray-400" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 space-y-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <Upload className="size-4" />
+              {companyLogo ? "Ganti Logo" : "Upload Logo"}
+            </button>
+            {companyLogo && (
+              <button
+                type="button"
+                onClick={() => setCompanyLogo(null)}
+                className="w-full flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="size-3.5" />
+                Hapus Logo
+              </button>
+            )}
+            <p className="text-[10px] text-gray-500 text-center">Maks. 2MB (PNG, JPG, SVG)</p>
+          </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>Nama Perusahaan</label>
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            className={fieldClass}
+            placeholder="PT Mitra Solusindo"
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Alamat</label>
+          <input
+            type="text"
+            value={companyAddress}
+            onChange={(e) => setCompanyAddress(e.target.value)}
+            className={fieldClass}
+            placeholder="Jl. TB Simatupang No. 88, Jakarta"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={labelClass}>Telepon</label>
+            <input
+              type="text"
+              value={companyPhone}
+              onChange={(e) => setCompanyPhone(e.target.value)}
+              className={fieldClass}
+              placeholder="+6221..."
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Email</label>
+            <input
+              type="email"
+              value={companyEmail}
+              onChange={(e) => setCompanyEmail(e.target.value)}
+              className={fieldClass}
+              placeholder="info@..."
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Office Coordinates & Geofence */}
       <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+        <h2 className="text-base font-bold text-primary flex items-center gap-2">
+          <MapPin className="size-4" />
+          Lokasi Kantor & Geofence
+        </h2>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={labelClass}>Latitude</label>
+            <input
+              type="number"
+              step="any"
+              value={companyLat}
+              onChange={(e) => setCompanyLat(e.target.value)}
+              className={fieldClass}
+              placeholder="-6.2297"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Longitude</label>
+            <input
+              type="number"
+              step="any"
+              value={companyLng}
+              onChange={(e) => setCompanyLng(e.target.value)}
+              className={fieldClass}
+              placeholder="106.8197"
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGetCurrentLocation}
+          className="w-full flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+        >
+          <MapPin className="size-4" />
+          Deteksi Lokasi Saya
+        </button>
+
+        <div>
+          <label className={labelClass}>Radius GPS (Meter)</label>
+          <input
+            type="number"
+            value={gpsRadius}
+            onChange={(e) => setGpsRadius(e.target.value)}
+            className={fieldClass}
+            placeholder="100"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Karyawan hanya bisa absen dalam radius ini dari titik koordinat
+          </p>
+        </div>
+      </div>
+
+      {/* Office Branches */}
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-primary flex items-center gap-2">
+            <Building2 className="size-4" />
+            Kantor Cabang ({branches.length})
+          </h2>
+          <button
+            type="button"
+            onClick={() => openBranchDialog(null)}
+            className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-primary/90"
+          >
+            <Plus className="size-3.5" />
+            Tambah
+          </button>
+        </div>
+
+        {branches.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center">
+            <Building2 className="size-6 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Belum ada kantor cabang</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Tambahkan kantor cabang untuk lokasi tambahan
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {branches.map((branch) => (
+              <div
+                key={branch.id}
+                className="rounded-xl border border-gray-200 p-3 flex items-start gap-3 bg-white"
+              >
+                <div className={`shrink-0 size-10 rounded-lg flex items-center justify-center ${
+                  branch.isMain ? "bg-amber-100" : "bg-gray-100"
+                }`}>
+                  {branch.isMain ? (
+                    <Star className="size-5 text-amber-600 fill-amber-500" />
+                  ) : (
+                    <Building2 className="size-5 text-gray-500" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-sm truncate">{branch.name}</p>
+                    {branch.isMain && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">
+                        PUSAT
+                      </span>
+                    )}
+                    {!branch.isActive && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold">
+                        OFF
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 truncate">{branch.address}</p>
+                  <p className="text-[10px] text-gray-400 font-mono mt-0.5">
+                    {branch.latitude.toFixed(4)}, {branch.longitude.toFixed(4)} • Radius {branch.radius}m
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openBranchDialog(branch)}
+                    className="size-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                  >
+                    <Upload className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeletingBranchId(branch.id)}
+                    className="size-8 rounded-lg border border-red-200 bg-white flex items-center justify-center text-red-500 hover:bg-red-50"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Work Schedule */}
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+        <h2 className="text-base font-bold text-primary">Jadwal Kerja</h2>
+
         <div>
           <label className={labelClass}>Jadwal Jam Masuk</label>
           <select value={checkInTime} onChange={(e) => setCheckInTime(e.target.value)} className={fieldClass}>
@@ -216,6 +638,140 @@ export default function AdminSettingsPage() {
       >
         {saving ? <><Loader2 className="size-4 animate-spin" /> Menyimpan...</> : "Simpan Pengaturan"}
       </button>
+
+      {/* Branch Dialog */}
+      <Dialog open={branchDialogOpen} onOpenChange={setBranchDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingBranch ? "Edit Kantor Cabang" : "Tambah Kantor Cabang"}</DialogTitle>
+            <DialogDescription>
+              Tambahkan lokasi kantor tambahan untuk mendukung multi-cabang
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs font-semibold">Nama Cabang *</Label>
+              <input
+                type="text"
+                value={branchForm.name}
+                onChange={(e) => setBranchForm((f) => ({ ...f, name: e.target.value }))}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Kantor Pusat Jakarta"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold">Alamat *</Label>
+              <input
+                type="text"
+                value={branchForm.address}
+                onChange={(e) => setBranchForm((f) => ({ ...f, address: e.target.value }))}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Jl. Sudirman No. 1, Jakarta"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs font-semibold">Latitude *</Label>
+                <input
+                  type="number"
+                  step="any"
+                  value={branchForm.latitude}
+                  onChange={(e) => setBranchForm((f) => ({ ...f, latitude: e.target.value }))}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="-6.2088"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Longitude *</Label>
+                <input
+                  type="number"
+                  step="any"
+                  value={branchForm.longitude}
+                  onChange={(e) => setBranchForm((f) => ({ ...f, longitude: e.target.value }))}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="106.8456"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold">Radius GPS (Meter)</Label>
+              <input
+                type="number"
+                value={branchForm.radius}
+                onChange={(e) => setBranchForm((f) => ({ ...f, radius: e.target.value }))}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="100"
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 p-3">
+              <div>
+                <p className="text-sm font-semibold">Jadikan Kantor Pusat</p>
+                <p className="text-xs text-gray-500">Cabang utama sebagai default</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={branchForm.isMain}
+                onChange={(e) => setBranchForm((f) => ({ ...f, isMain: e.target.checked }))}
+                className="size-5 accent-primary"
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 p-3">
+              <div>
+                <p className="text-sm font-semibold">Status Aktif</p>
+                <p className="text-xs text-gray-500">Cabang dapat digunakan untuk absensi</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={branchForm.isActive}
+                onChange={(e) => setBranchForm((f) => ({ ...f, isActive: e.target.checked }))}
+                className="size-5 accent-primary"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBranchDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleSaveBranch} className="bg-primary">
+              {editingBranch ? "Simpan" : "Tambah"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingBranchId} onOpenChange={(o) => !o && setDeletingBranchId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hapus Kantor Cabang?</DialogTitle>
+            <DialogDescription>
+              Tindakan ini tidak dapat dibatalkan. Cabang akan dihapus permanen.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingBranchId(null)}>
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deletingBranchId && handleDeleteBranch(deletingBranchId)}
+            >
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
+}
+
+function Label({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <label className={`text-xs font-semibold mb-1.5 block ${className || ""}`}>{children}</label>
 }

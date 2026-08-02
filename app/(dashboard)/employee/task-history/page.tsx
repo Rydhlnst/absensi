@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect, useTransition } from "react"
 import { format } from "date-fns"
 import {
   Clock,
@@ -132,36 +132,20 @@ export default function TaskHistoryPage() {
   const [tasks, setTasks] = useState<TaskRecord[]>([])
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [, startTransition] = useTransition()
 
   const currentEmployeeId = session?.user?.id || ""
   const now = new Date()
-
-  const loadData = useCallback(async () => {
-    if (!currentEmployeeId) return
-    try {
-      setLoading(true)
-      const [t, a] = await Promise.all([
-        apiClient.get<TaskRecord[]>("/api/tasks", { assignedTo: currentEmployeeId }),
-        apiClient.get<AttendanceRecord[]>("/api/attendance", { employeeId: currentEmployeeId }),
-      ])
-      setTasks(t)
-      setAttendanceRecords(a)
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Gagal memuat data"
-      toast.error(message)
-    } finally {
-      setLoading(false)
-    }
-  }, [currentEmployeeId])
-
-  void loadData
+  const todayStr = format(now, "yyyy-MM-dd")
 
   useEffect(() => {
     if (!currentEmployeeId) return
     let cancelled = false
+    startTransition(() => {
+      setLoading(true)
+    })
     async function load() {
       try {
-        setLoading(true)
         const [t, a] = await Promise.all([
           apiClient.get<TaskRecord[]>("/api/tasks", { assignedTo: currentEmployeeId }),
           apiClient.get<AttendanceRecord[]>("/api/attendance", { employeeId: currentEmployeeId }),
@@ -177,17 +161,16 @@ export default function TaskHistoryPage() {
         if (!cancelled) setLoading(false)
       }
     }
-    load()
+    void load()
     return () => { cancelled = true }
-  }, [currentEmployeeId])
+  }, [currentEmployeeId, startTransition])
 
   const dateRange = useMemo(() => {
     const y = parseInt(selectedYear)
     const m = parseInt(selectedMonth)
 
     if (filterMode === "day") {
-      const today = format(now, "yyyy-MM-dd")
-      return { start: today, end: today }
+      return { start: todayStr, end: todayStr }
     }
     if (filterMode === "month") {
       const start = `${y}-${String(m).padStart(2, "0")}-01`
@@ -199,7 +182,7 @@ export default function TaskHistoryPage() {
       return { start: `${y}-01-01`, end: `${y}-12-31` }
     }
     return { start: dateStart, end: dateEnd }
-  }, [filterMode, selectedMonth, selectedYear, dateStart, dateEnd])
+  }, [filterMode, selectedMonth, selectedYear, dateStart, dateEnd, todayStr])
 
   const myTasks = useMemo(() => {
     return tasks

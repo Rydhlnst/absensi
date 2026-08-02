@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useCallback, useTransition } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { Lock, RefreshCw, Clock, MapPin, FileText, Home } from "lucide-react"
+import { Lock, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
@@ -46,16 +46,16 @@ export default function EmployeeDashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [workingMinutes, setWorkingMinutes] = useState(0)
+  const [, startTransition] = useTransition()
 
   const currentUserId = session?.user?.id || ""
-  const now = new Date()
+  const [now] = useState(() => new Date())
   const todayStr = format(now, "yyyy-MM-dd")
   const currentMonthLabel = `BULAN INI (${format(now, "MMMM yyyy", { locale: id }).toUpperCase()})`
 
   const loadData = useCallback(async () => {
     if (!currentUserId) return
     try {
-      setLoading(true)
       const [att, prof] = await Promise.all([
         apiClient.get<AttendanceRecord[]>("/api/attendance", {
           employeeId: currentUserId,
@@ -69,24 +69,21 @@ export default function EmployeeDashboardPage() {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Gagal memuat data"
       toast.error(message)
-    } finally {
-      setLoading(false)
     }
   }, [currentUserId])
 
   useEffect(() => {
-    void loadData()
-  }, [loadData])
+    startTransition(() => {
+      setLoading(true)
+      void loadData().finally(() => setLoading(false))
+    })
+  }, [loadData, startTransition])
 
-  const todayAttendance = useMemo(
-    () => attendanceRecords.find((a) => a.employeeId === currentUserId && a.date === todayStr),
-    [attendanceRecords, currentUserId, todayStr]
+  const todayAttendance = attendanceRecords.find(
+    (a) => a.employeeId === currentUserId && a.date === todayStr
   )
 
-  const monthRecords = useMemo(
-    () => attendanceRecords.filter((a) => a.date.startsWith(format(now, "yyyy-MM"))),
-    [attendanceRecords]
-  )
+  const monthRecords = attendanceRecords.filter((a) => a.date.startsWith(format(now, "yyyy-MM")))
 
   const monthPresent = monthRecords.filter(
     (a) => a.status === "present" || a.status === "late"
@@ -98,10 +95,7 @@ export default function EmployeeDashboardPage() {
 
   const isAlreadyCheckedIn = !!todayAttendance?.checkIn
   const isAlreadyCheckedOut = !!todayAttendance?.checkOut
-  const checkInTime = useMemo(
-    () => (todayAttendance?.checkIn ? new Date(todayAttendance.checkIn) : null),
-    [todayAttendance?.checkIn]
-  )
+  const checkInTime = todayAttendance?.checkIn ? new Date(todayAttendance.checkIn) : null
   const toleranceExceeded = now.getHours() >= 9
 
   useEffect(() => {

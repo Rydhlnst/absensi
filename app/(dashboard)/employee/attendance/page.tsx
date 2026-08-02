@@ -112,16 +112,17 @@ export default function AttendancePage() {
   const isCheckedIn = !!todayRecord?.checkIn
   const isCheckedOut = !!todayRecord?.checkOut
   const checkInTime = todayRecord?.checkIn ? new Date(todayRecord.checkIn) : null
+  const checkInTimeMs = checkInTime?.getTime() ?? 0
 
   useEffect(() => {
-    if (isCheckedIn && !isCheckedOut && checkInTime) {
+    if (isCheckedIn && !isCheckedOut && checkInTimeMs) {
       const updateMinutes = () => {
-        const diff = Math.floor((Date.now() - checkInTime.getTime()) / 60000)
+        const diff = Math.floor((Date.now() - checkInTimeMs) / 60000)
         setWorkingMinutes(diff)
       }
       updateMinutes()
     }
-  }, [isCheckedIn, isCheckedOut, checkInTime, currentTime])
+  }, [isCheckedIn, isCheckedOut, checkInTimeMs, currentTime])
 
   const handleCheckIn = async () => {
     if (!currentUserId) return

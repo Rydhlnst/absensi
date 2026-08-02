@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Printer, Share2, FileText, Table } from "lucide-react"
+import { FileText, Table } from "lucide-react"
 import { generatePDF, generateExcel, formatCurrency } from "@/lib/export"
 
 const sampleData = [

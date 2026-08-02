@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 
 import { MapPin, BookOpen, HardHat, UserX, Wallet, Layers } from "lucide-react"
 import { apiClient } from "@/lib/api"
-import { AdminDashboardSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 
 function formatCurrency(amount: number): string {
