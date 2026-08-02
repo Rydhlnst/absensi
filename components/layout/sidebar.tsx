@@ -81,8 +81,8 @@ function SidebarMenuContent({ menus }: { menus: MenuItem[] }) {
               href={item.url}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
                 isActive
-                  ? "bg-primary text-white"
-                  : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground/70 hover:bg-accent hover:text-foreground"
               }`}
             >
               <item.icon className="size-5 shrink-0" />
@@ -99,12 +99,12 @@ function AndarLogo() {
   return (
     <div className="flex flex-col items-center gap-1 py-3">
       <div className="flex items-center gap-2">
-        <div className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-red-600 to-red-700 shadow-sm">
-          <span className="text-white font-extrabold text-lg">M</span>
+        <div className="flex size-10 items-center justify-center rounded-lg bg-brand shadow-sm">
+          <span className="text-brand-foreground font-extrabold text-lg">M</span>
         </div>
         <div className="flex flex-col leading-none">
-          <span className="text-2xl font-extrabold text-red-600 tracking-tight">ANDAR.NET</span>
-          <span className="text-[9px] text-gray-500 tracking-wider uppercase mt-0.5 font-semibold">
+          <span className="text-2xl font-extrabold text-brand tracking-tight">ANDAR.NET</span>
+          <span className="text-muted-foreground mt-0.5 text-[9px] font-semibold tracking-wider uppercase">
             PT. ANDAR KARYA GEMILANG
           </span>
         </div>
@@ -117,8 +117,8 @@ function AppSidebar({ role }: AppSidebarProps) {
   const menus = getMenusByRole(role)
 
   return (
-    <Sidebar collapsible="offcanvas" className="border-r border-gray-200 bg-white">
-      <SidebarHeader className="px-3 py-3 border-b border-gray-100">
+    <Sidebar collapsible="offcanvas" className="border-r border-border bg-card">
+      <SidebarHeader className="border-b border-border px-3 py-3">
         <AndarLogo />
       </SidebarHeader>
       <SidebarContent className="py-3">
@@ -130,7 +130,7 @@ function AppSidebar({ role }: AppSidebarProps) {
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="px-4 py-3">
-        <p className="text-xs text-gray-500 text-center font-medium">Operasional Sistem Stabil</p>
+        <p className="text-muted-foreground text-center text-xs font-medium">Operasional Sistem Stabil</p>
       </SidebarFooter>
     </Sidebar>
   )

@@ -24,7 +24,7 @@ function MobileNav({ role }: MobileNavProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white shadow-lg"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card shadow-lg"
       style={{ height: "64px", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="grid h-full grid-cols-4">
@@ -39,12 +39,12 @@ function MobileNav({ role }: MobileNavProps) {
             >
               <item.icon
                 className={`h-6 w-6 shrink-0 transition-colors ${
-                  isActive ? "text-primary" : "text-gray-400"
+                  isActive ? "text-primary" : "text-muted-foreground"
                 }`}
               />
               <span
                 className={`text-xs leading-none transition-colors ${
-                  isActive ? "font-semibold text-primary" : "text-gray-400"
+                  isActive ? "font-semibold text-primary" : "text-muted-foreground"
                 }`}
               >
                 {item.title}

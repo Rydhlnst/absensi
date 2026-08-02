@@ -4,12 +4,21 @@ import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { format } from "date-fns"
 import { id } from "date-fns/locale/id"
-import { Bell, LogOut, Clock, LogIn } from "lucide-react"
+import { Bell, LogOut, Clock, ChevronDown, User as UserIcon, Settings } from "lucide-react"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import AppSidebar from "@/components/layout/sidebar"
 import MobileNav from "@/components/layout/mobile-nav"
 import { Toaster } from "sonner"
@@ -32,10 +41,10 @@ interface SessionUserExtended {
 
 function LoadingScreen() {
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+    <div className="flex h-screen w-full items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
         <div className="size-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        <p className="text-sm text-gray-500">Memuat...</p>
+        <p className="text-sm text-muted-foreground">Memuat...</p>
       </div>
     </div>
   )
@@ -58,17 +67,17 @@ function TimeSimulationBar() {
     return () => clearInterval(timer)
   }, [])
   return (
-    <div className="w-full shrink-0" style={{ backgroundColor: "#1e3a8a" }}>
+    <div className="w-full shrink-0 bg-primary">
       <div className="flex flex-wrap items-center gap-3 px-4 py-2">
         <div className="flex items-center gap-2">
-          <Clock className="size-4 text-white/70" />
-          <span className="text-sm font-medium text-white">Simulasi Waktu:</span>
+          <Clock className="size-4 text-primary-foreground/70" />
+          <span className="text-sm font-medium text-primary-foreground">Simulasi Waktu:</span>
         </div>
         <button
           type="button"
           onClick={() => setSimActive(!simActive)}
           className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-            simActive ? "bg-blue-400" : "bg-white/30"
+            simActive ? "bg-primary" : "bg-primary-foreground/30"
           }`}
         >
           <span
@@ -78,14 +87,14 @@ function TimeSimulationBar() {
           />
         </button>
         {simActive ? (
-          <span className="text-xs font-semibold text-red-300">ON (Simulasi)</span>
+          <span className="text-xs font-semibold text-warning">ON (Simulasi)</span>
         ) : (
-          <span className="text-xs font-semibold text-green-300">OFF (Waktu Asli)</span>
+          <span className="text-xs font-semibold text-success">OFF (Waktu Asli)</span>
         )}
       </div>
-      <div className="px-4 pb-2 flex items-center gap-2">
-        <Clock className="size-3 text-white/60" />
-        <p className="text-xs text-white/80 font-mono">
+      <div className="flex items-center gap-2 px-4 pb-2">
+        <Clock className="size-3 text-primary-foreground/60" />
+        <p className="font-mono text-xs text-primary-foreground/80">
           Jam Sistem: {format(time, "EEEE, dd MMMM yyyy", { locale: id })} -{" "}
           {format(time, "HH:mm:ss")}
         </p>
@@ -178,38 +187,50 @@ export default function DashboardLayout({
 
   const isEmployee = role === "employee"
   const pageTitle = getPageTitle(pathname)
+  const roleName = role === "super_admin" ? "Super Admin" : role === "admin" ? "Admin" : user.position
 
   // ─── EMPLOYEE LAYOUT ───────────────────────────────────────────────────────
   if (isEmployee) {
     return (
       <TooltipProvider>
-        <div className="flex flex-col min-h-screen bg-gray-50">
-          {/* Employee header */}
-          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-white border-b px-4 shrink-0 shadow-sm">
-            <Avatar size="lg">
-              <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
-              <AvatarFallback className="bg-blue-100 text-primary font-bold">{initials}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-gray-900 leading-tight">
-                Halo, {user.name.split(" ")[0].toUpperCase()}
-              </p>
-              <p className="text-xs text-gray-400 leading-tight">
-                {format(new Date(), "EEEE, dd MMMM yyyy", { locale: id })}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 border border-amber-200">
-                <Clock className="size-3" />
-                Jam Admin: <LiveClock />
-              </span>
-              <button
-                onClick={handleSignOut}
-                className="flex size-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100"
-              >
-                <LogIn className="size-4 rotate-180" />
-              </button>
-            </div>
+        <div className="flex flex-col min-h-screen bg-background">
+          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-card px-4 shrink-0 shadow-sm">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="flex items-center gap-3 min-w-0 flex-1">
+                  <Avatar size="lg">
+                    <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="font-bold text-sm text-foreground leading-tight">
+                      Halo, {user.name.split(" ")[0].toUpperCase()}
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-tight">
+                      {format(new Date(), "EEEE, dd MMMM yyyy", { locale: id })}
+                    </p>
+                  </div>
+                  <span className="flex items-center gap-1 rounded-full bg-warning/30 px-3 py-1 text-xs font-semibold text-warning-foreground border border-warning/30">
+                    <Clock className="size-3" />
+                    Jam Admin: <LiveClock />
+                  </span>
+                  <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium">{user.name}</span>
+                    <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
+                  <LogOut className="size-4" />
+                  <span>Keluar</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </header>
 
           <main className="flex-1 overflow-x-hidden overflow-y-auto pb-20">
@@ -230,35 +251,59 @@ export default function DashboardLayout({
         <AppSidebar role={role} user={user} />
 
         <div className="flex flex-col flex-1 min-h-screen w-0">
-          {/* Admin header */}
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 shrink-0 shadow-sm">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-4 shrink-0 shadow-sm">
             <SidebarTrigger className="shrink-0 text-primary" />
             <span className="flex-1 font-bold text-primary tracking-wide text-base">
               {pageTitle}
             </span>
             <Button variant="ghost" size="icon" className="size-9 relative shrink-0">
-              <Bell className="size-5 text-gray-600" />
-              <Badge className="absolute -top-1 -right-1 size-4 p-0 text-[10px] flex items-center justify-center rounded-full bg-red-500 text-white border-0">
+              <Bell className="size-5 text-muted-foreground" />
+              <Badge className="absolute -top-1 -right-1 size-4 p-0 text-[10px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground border-0">
                 3
               </Badge>
             </Button>
-            <Avatar size="sm">
-              <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
-              <AvatarFallback className="bg-primary text-white font-bold text-xs">{initials}</AvatarFallback>
-            </Avatar>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-              onClick={handleSignOut}
-            >
-              <LogOut className="size-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 h-9 px-2">
+                  <Avatar size="sm">
+                    <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
+                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="hidden md:flex flex-col items-start">
+                    <span className="text-sm font-medium leading-none">{user.name}</span>
+                    <span className="text-xs text-muted-foreground leading-none mt-1">{roleName}</span>
+                  </div>
+                  <ChevronDown className="size-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium">{user.name}</span>
+                    <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <UserIcon className="size-4" />
+                  <span>Profil</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings className="size-4" />
+                  <span>Pengaturan</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
+                  <LogOut className="size-4" />
+                  <span>Keluar</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </header>
 
           <TimeSimulationBar />
 
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-3 sm:p-4">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4">
             {children}
           </main>
         </div>
