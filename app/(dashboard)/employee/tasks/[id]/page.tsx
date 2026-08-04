@@ -299,6 +299,16 @@ export default function TaskDetailPage() {
               <span className="text-muted-foreground">Tanggal Kerja</span>
               <span>{formatDate(task.workingDate)}</span>
             </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-muted-foreground">Estimasi Durasi</span>
+              <span>{task.estimatedDuration ? `${Math.floor(task.estimatedDuration / 60)}j ${task.estimatedDuration % 60}m` : "—"}</span>
+            </div>
+            {task.completedAt && (
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Selesai</span>
+                <span>{formatDateTime(task.completedAt)}</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

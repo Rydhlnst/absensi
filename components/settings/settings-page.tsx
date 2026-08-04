@@ -55,6 +55,8 @@ interface CompanySettings {
   installationPoints: number | null
   repairPoints: number | null
   billingPoints: number | null
+  maintenancePoints: number | null
+  inspectionPoints: number | null
 }
 
 interface OfficeBranch {
@@ -89,6 +91,8 @@ export default function SettingsPage({ role }: SettingsPageProps) {
   const [poinPemasangan, setPoinPemasangan] = useState("100")
   const [poinGangguan, setPoinGangguan] = useState("50")
   const [poinTagihan, setPoinTagihan] = useState("20")
+  const [poinMaintenance, setPoinMaintenance] = useState("50")
+  const [poinInspeksi, setPoinInspeksi] = useState("30")
   const [poinBuatTugas, setPoinBuatTugas] = useState("10")
 
   const [companyName, setCompanyName] = useState("")
@@ -138,6 +142,8 @@ export default function SettingsPage({ role }: SettingsPageProps) {
         if (settings.installationPoints != null) setPoinPemasangan(String(settings.installationPoints))
         if (settings.repairPoints != null) setPoinGangguan(String(settings.repairPoints))
         if (settings.billingPoints != null) setPoinTagihan(String(settings.billingPoints))
+        if (settings.maintenancePoints != null) setPoinMaintenance(String(settings.maintenancePoints))
+        if (settings.inspectionPoints != null) setPoinInspeksi(String(settings.inspectionPoints))
         setCompanyName(settings.name || "")
         setCompanyAddress(settings.address || "")
         setCompanyPhone(settings.phone || "")
@@ -226,6 +232,8 @@ export default function SettingsPage({ role }: SettingsPageProps) {
         installationPoints: parseInt(poinPemasangan) || 0,
         repairPoints: parseInt(poinGangguan) || 0,
         billingPoints: parseInt(poinTagihan) || 0,
+        maintenancePoints: parseInt(poinMaintenance) || 0,
+        inspectionPoints: parseInt(poinInspeksi) || 0,
       })
       const { removeCache } = await import("@/lib/cache")
       removeCache("GET:/api/settings")
@@ -698,6 +706,14 @@ export default function SettingsPage({ role }: SettingsPageProps) {
           <div>
             <label className={labelClass}>Poin Tagihan</label>
             <input type="number" value={poinTagihan} onChange={(e) => canEdit && setPoinTagihan(e.target.value)} className={fieldClass} readOnly={!canEdit} />
+          </div>
+          <div>
+            <label className={labelClass}>Poin Maintenance</label>
+            <input type="number" value={poinMaintenance} onChange={(e) => canEdit && setPoinMaintenance(e.target.value)} className={fieldClass} readOnly={!canEdit} />
+          </div>
+          <div>
+            <label className={labelClass}>Poin Inspeksi</label>
+            <input type="number" value={poinInspeksi} onChange={(e) => canEdit && setPoinInspeksi(e.target.value)} className={fieldClass} readOnly={!canEdit} />
           </div>
           <div>
             <label className={labelClass}>Poin Membuat Tugas (Karyawan)</label>

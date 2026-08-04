@@ -21,8 +21,6 @@ export const user = pgTable("user", {
   address: text("address"),
   bankName: text("bankName"),
   bankAccount: text("bankAccount"),
-  deviceBinding: text("deviceBinding"),
-  lastLocation: text("lastLocation"),
 });
 
 export const session = pgTable("session", {

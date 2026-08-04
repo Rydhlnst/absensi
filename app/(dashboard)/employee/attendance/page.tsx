@@ -225,6 +225,24 @@ export default function AttendancePage() {
     if (!todayRecord) return
     setSubmitting(true)
     try {
+      let userLocation: { latitude: number; longitude: number } | null = null
+      if (navigator.geolocation) {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+            })
+          })
+          userLocation = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          }
+        } catch {
+          // GPS not available
+        }
+      }
+
       let photoUrl: string | null = null
       if (photo) {
         setPhotoUploading(true)
@@ -241,6 +259,7 @@ export default function AttendancePage() {
         id: todayRecord.id,
         checkOut: new Date().toISOString(),
         checkOutPhoto: photoUrl,
+        checkOutLocation: userLocation ? JSON.stringify(userLocation) : null,
       })
       toast.success("Check out berhasil!")
       await fetchData()
