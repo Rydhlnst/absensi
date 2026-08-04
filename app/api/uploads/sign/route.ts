@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getPresignedUploadUrl, R2_PUBLIC_URL } from "@/lib/r2"
+import { getPresignedUploadUrl } from "@/lib/r2"
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 const ALLOWED_DOC_TYPES = ["application/pdf"]
@@ -27,7 +27,11 @@ export async function POST(request: NextRequest) {
     }
 
     const uploadUrl = await getPresignedUploadUrl(key, fileType)
-    const publicUrl = `${R2_PUBLIC_URL}/${key}`
+    // Serve via the app's own origin (/api/files/<key>) so browsers never hit
+    // the r2.dev domain, which is DNS-blocked on Indonesian ISPs. Falls back to
+    // NEXT_PUBLIC_APP_URL if the request origin isn't available.
+    const origin = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || ""
+    const publicUrl = `${origin}/api/files/${key}`
 
     return NextResponse.json({ uploadUrl, key, publicUrl })
   } catch (error) {

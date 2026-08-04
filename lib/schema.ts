@@ -6,8 +6,8 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
-  createdAt: timestamp("createdAt").notNull(),
-  updatedAt: timestamp("updatedAt").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
   role: text("role").default("employee"),
   department: text("department").default(""),
   position: text("position").default(""),
@@ -17,7 +17,7 @@ export const user = pgTable("user", {
   hourlyRate: integer("hourlyRate").default(0),
   rewardPoints: integer("rewardPoints").default(0),
   status: text("status").default("active"),
-  joinDate: timestamp("joinDate"),
+  joinDate: timestamp("joinDate", { withTimezone: true }),
   address: text("address"),
   bankName: text("bankName"),
   bankAccount: text("bankAccount"),
@@ -30,11 +30,11 @@ export const session = pgTable("session", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   token: text("token").notNull().unique(),
-  expiresAt: timestamp("expiresAt").notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
   ipAddress: text("ipAddress"),
   userAgent: text("userAgent"),
-  createdAt: timestamp("createdAt").notNull(),
-  updatedAt: timestamp("updatedAt").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
 });
 
 export const account = pgTable("account", {
@@ -46,22 +46,22 @@ export const account = pgTable("account", {
   providerId: text("providerId").notNull(),
   accessToken: text("accessToken"),
   refreshToken: text("refreshToken"),
-  accessTokenExpiresAt: timestamp("accessTokenExpiresAt"),
-  refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt"),
+  accessTokenExpiresAt: timestamp("accessTokenExpiresAt", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", { withTimezone: true }),
   scope: text("scope"),
   idToken: text("idToken"),
   password: text("password"),
-  createdAt: timestamp("createdAt").notNull(),
-  updatedAt: timestamp("updatedAt").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
 });
 
 export const verification = pgTable("verification", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: timestamp("expiresAt").notNull(),
-  createdAt: timestamp("createdAt").notNull(),
-  updatedAt: timestamp("updatedAt").notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
 });
 
 export const task = pgTable("task", {
@@ -81,10 +81,10 @@ export const task = pgTable("task", {
   assignedTo: text("assignedTo").references(() => user.id),
   assignedBy: text("assignedBy").references(() => user.id),
   rewardPoints: integer("rewardPoints").default(0),
-  createdAt: timestamp("createdAt"),
-  updatedAt: timestamp("updatedAt"),
-  startedAt: timestamp("startedAt"),
-  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt", { withTimezone: true }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
   workingDate: text("workingDate"),
   estimatedDuration: integer("estimatedDuration").default(120),
   attachments: text("attachments"),
@@ -95,8 +95,8 @@ export const attendance = pgTable("attendance", {
   id: text("id").primaryKey(),
   employeeId: text("employeeId").references(() => user.id),
   date: text("date").notNull(),
-  checkIn: timestamp("checkIn"),
-  checkOut: timestamp("checkOut"),
+  checkIn: timestamp("checkIn", { withTimezone: true }),
+  checkOut: timestamp("checkOut", { withTimezone: true }),
   checkInLocation: text("checkInLocation"),
   checkOutLocation: text("checkOutLocation"),
   checkInPhoto: text("checkInPhoto"),
@@ -117,7 +117,7 @@ export const reward = pgTable("reward", {
   type: text("type").notNull(),
   description: text("description"),
   taskId: text("taskId").references(() => task.id),
-  createdAt: timestamp("createdAt"),
+  createdAt: timestamp("createdAt", { withTimezone: true }),
 });
 
 export const rewardItem = pgTable("reward_item", {
@@ -150,7 +150,7 @@ export const notification = pgTable("notification", {
   message: text("message"),
   type: text("type"),
   isRead: boolean("isRead").default(false),
-  createdAt: timestamp("createdAt"),
+  createdAt: timestamp("createdAt", { withTimezone: true }),
   link: text("link"),
 });
 
@@ -187,8 +187,8 @@ export const officeBranch = pgTable("office_branch", {
   radius: integer("radius").default(100),
   isMain: boolean("isMain").default(false),
   isActive: boolean("isActive").default(true),
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const timelineEvent = pgTable("timeline_event", {
@@ -196,7 +196,7 @@ export const timelineEvent = pgTable("timeline_event", {
   taskId: text("taskId").references(() => task.id),
   status: text("status").notNull(),
   description: text("description"),
-  timestamp: timestamp("timestamp"),
+  timestamp: timestamp("timestamp", { withTimezone: true }),
   employeeId: text("employeeId").references(() => user.id),
   employeeName: text("employeeName"),
 });
@@ -208,7 +208,7 @@ export const systemLog = pgTable("system_log", {
   type: text("type"),
   detail: text("detail"),
   ipAddress: text("ipAddress"),
-  timestamp: timestamp("timestamp"),
+  timestamp: timestamp("timestamp", { withTimezone: true }),
 });
 
 export const leave = pgTable("leave", {
@@ -220,10 +220,10 @@ export const leave = pgTable("leave", {
   reason: text("reason"),
   status: text("status").notNull().default("pending"),
   approvedBy: text("approvedBy").references(() => user.id),
-  approvedAt: timestamp("approvedAt"),
+  approvedAt: timestamp("approvedAt", { withTimezone: true }),
   rejectionReason: text("rejectionReason"),
-  createdAt: timestamp("createdAt").notNull(),
-  updatedAt: timestamp("updatedAt").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
 });
 
 export const device = pgTable("device", {
@@ -232,6 +232,6 @@ export const device = pgTable("device", {
   deviceId: text("deviceId").notNull(),
   deviceName: text("deviceName"),
   platform: text("platform"),
-  boundAt: timestamp("boundAt").notNull(),
+  boundAt: timestamp("boundAt", { withTimezone: true }).notNull(),
   isActive: boolean("isActive").default(true),
 });
