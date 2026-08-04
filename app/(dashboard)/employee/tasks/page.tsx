@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { MapPin, Eye, Plus, Home, FileText, Map } from "lucide-react"
+import { MapPin, Eye, Plus, Home, FileText, Map, ClipboardList } from "lucide-react"
 import Link from "next/link"
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { apiClient } from "@/lib/api"
 import { TaskListSkeleton } from "@/components/skeletons"
 import type { Task, TaskCategory } from "@/types"
 import { toast } from "sonner"
+import EmptyState from "@/components/empty-state"
 
 const categoryLabels: Record<TaskCategory, string> = {
   installation: "PEMASANGAN",
@@ -68,8 +69,8 @@ function TaskCard({ task, creatorName }: { task: Task; creatorName?: string }) {
   }
 
   return (
-    <div className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
-      <div className="px-4 py-3 flex items-center justify-center gap-3 bg-gray-50 border-b border-gray-200">
+    <div className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden">
+      <div className="px-4 py-3 flex items-center justify-center gap-3 bg-background border-b border-border">
         <span className={`rounded-full px-4 py-1.5 text-sm font-bold tracking-wider ${catColor}`}>
           {categoryLabels[task.category]}
         </span>
@@ -78,9 +79,9 @@ function TaskCard({ task, creatorName }: { task: Task; creatorName?: string }) {
         </span>
       </div>
 
-      <div className="px-4 py-1.5 text-center text-xs text-gray-500 border-b border-gray-100">
+      <div className="px-4 py-1.5 text-center text-xs text-muted-foreground border-b border-border/50">
         <p>
-          Pembuat Tugas: <span className="font-bold text-gray-700">{creatorName || "Admin"}</span>
+          Pembuat Tugas: <span className="font-bold text-foreground">{creatorName || "Admin"}</span>
         </p>
       </div>
 
@@ -89,15 +90,15 @@ function TaskCard({ task, creatorName }: { task: Task; creatorName?: string }) {
           <div className="flex items-center gap-2 min-w-0">
             <MapPin className="size-4 text-red-500 shrink-0" />
             <p className="text-sm min-w-0">
-              <span className="font-semibold text-gray-900">Alamat:</span>{" "}
-              <span className="font-bold text-gray-900 truncate">{task.address}</span>
+              <span className="font-semibold text-foreground">Alamat:</span>{" "}
+              <span className="font-bold text-foreground truncate">{task.address}</span>
             </p>
           </div>
           <a
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
+            className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/50"
           >
             <span className="text-blue-500"><Map className="size-3.5 inline" /></span> Google Maps
           </a>
@@ -106,16 +107,16 @@ function TaskCard({ task, creatorName }: { task: Task; creatorName?: string }) {
         <div className="flex items-start gap-2">
           <Home className="size-4 text-blue-500 shrink-0 mt-0.5" />
           <p className="text-sm">
-            <span className="font-semibold text-gray-900">Detail Alamat:</span>{" "}
-            <span className="text-gray-700">{task.addressDetail || "-"}</span>
+            <span className="font-semibold text-foreground">Detail Alamat:</span>{" "}
+            <span className="text-foreground">{task.addressDetail || "-"}</span>
           </p>
         </div>
 
         <div className="flex items-start gap-2">
           <FileText className="size-4 text-amber-500 shrink-0 mt-0.5" />
           <p className="text-sm">
-            <span className="font-semibold text-gray-900">Keterangan Tugas:</span>{" "}
-            <span className="text-gray-700">{task.description}</span>
+            <span className="font-semibold text-foreground">Keterangan Tugas:</span>{" "}
+            <span className="text-foreground">{task.description}</span>
           </p>
         </div>
       </div>
@@ -123,7 +124,7 @@ function TaskCard({ task, creatorName }: { task: Task; creatorName?: string }) {
       <div className="px-4 pb-4 space-y-2">
         <Link
           href={`/employee/tasks/${task.id}`}
-          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-border bg-white py-2.5 text-sm font-semibold text-foreground hover:bg-muted/50"
         >
           <Eye className="size-4" />
           Detail
@@ -143,7 +144,7 @@ function TaskCard({ task, creatorName }: { task: Task; creatorName?: string }) {
 }
 
 export default function EmployeeTasksPage() {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending: sessionPending } = authClient.useSession()
   const [activeTab, setActiveTab] = useState<"active" | "done">("active")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState(createFormDefault)
@@ -155,7 +156,8 @@ export default function EmployeeTasksPage() {
   const currentUserId = session?.user?.id || ""
 
   useEffect(() => {
-    if (!currentUserId) return
+    if (sessionPending) return
+    if (!currentUserId) { setLoading(false); return }
     let cancelled = false
     async function load() {
       try {
@@ -175,10 +177,8 @@ export default function EmployeeTasksPage() {
       }
     }
     load()
-    return () => {
-      cancelled = true
-    }
-  }, [currentUserId])
+    return () => { cancelled = true }
+  }, [currentUserId, sessionPending])
 
   const activeTasks = useMemo(
     () => tasks.filter((t) => t.status !== "completed" && t.status !== "cancelled"),
@@ -246,29 +246,27 @@ export default function EmployeeTasksPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="p-4 space-y-4">
+      <div className="space-y-4">
           {/* Tabs skeleton */}
           <div className="flex gap-2">
-            <div className="flex-1 h-12 rounded-xl bg-gray-200 animate-pulse" />
-            <div className="flex-1 h-12 rounded-xl bg-gray-200 animate-pulse" />
+            <div className="flex-1 h-12 rounded-xl bg-muted animate-pulse" />
+            <div className="flex-1 h-12 rounded-xl bg-muted animate-pulse" />
           </div>
           <TaskListSkeleton count={3} />
-        </div>
       </div>
     )
   }
 
   return (
-    <div className="relative min-h-screen bg-gray-50">
-      <div className="p-4 pb-28 space-y-4">
+    <div className="relative bg-background">
+      <div className="space-y-4 pb-24">
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab("active")}
             className={`flex-1 rounded-xl py-3 text-sm font-bold transition-colors ${
               activeTab === "active"
                 ? "bg-primary text-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-600"
+                : "bg-white border border-border text-muted-foreground"
             }`}
           >
             Belum Selesai
@@ -278,7 +276,7 @@ export default function EmployeeTasksPage() {
             className={`flex-1 rounded-xl py-3 text-sm font-bold transition-colors ${
               activeTab === "done"
                 ? "bg-primary text-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-600"
+                : "bg-white border border-border text-muted-foreground"
             }`}
           >
             Selesai
@@ -286,9 +284,11 @@ export default function EmployeeTasksPage() {
         </div>
 
         {displayTasks.length === 0 ? (
-          <div className="rounded-2xl bg-white p-8 text-center text-gray-400 text-sm shadow-sm border border-gray-200">
-            {activeTab === "active" ? "Tidak ada tugas aktif" : "Tidak ada tugas selesai"}
-          </div>
+          <EmptyState
+            icon={ClipboardList}
+            title={activeTab === "active" ? "Tidak ada tugas aktif" : "Tidak ada tugas selesai"}
+            description={activeTab === "active" ? "Semua tugas sudah diselesaikan" : "Belum ada tugas yang selesai"}
+          />
         ) : (
           <div className="space-y-3">
             {displayTasks.map((task) => {
@@ -309,7 +309,7 @@ export default function EmployeeTasksPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md p-0 max-h-[92vh] overflow-hidden flex flex-col">
           <DialogHeader className="px-5 pt-5 pb-2 shrink-0">
-            <DialogTitle className="text-lg font-bold text-gray-900">Buat Tugas Mandiri Baru</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-foreground">Buat Tugas Mandiri Baru</DialogTitle>
           </DialogHeader>
 
           <div className="px-5 pb-5 space-y-3 overflow-y-auto flex-1">
@@ -323,7 +323,7 @@ export default function EmployeeTasksPage() {
                     className={`rounded-lg px-4 py-2 text-sm font-semibold border transition-colors ${
                       form.category === cat
                         ? "bg-primary text-white border-primary"
-                        : "border-gray-200 text-gray-600"
+                        : "border-border text-muted-foreground"
                     }`}
                   >
                     {cat === "installation" ? "Pemasangan" : cat === "repair" ? "Gangguan" : "Tagihan"}
@@ -332,7 +332,7 @@ export default function EmployeeTasksPage() {
               </div>
             </div>
 
-            <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-500">
+            <div className="rounded-lg bg-background border border-border px-3 py-2 text-sm text-muted-foreground">
               Reward Membuat Tugas: <span className="font-semibold text-green-600">+10 Poin</span>
             </div>
 
@@ -380,11 +380,11 @@ export default function EmployeeTasksPage() {
             </div>
           </div>
 
-          <div className="px-5 py-4 border-t border-gray-100 flex gap-2 shrink-0 bg-white">
+          <div className="px-5 py-4 border-t border-border/50 flex gap-2 shrink-0 bg-white">
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
-              className="flex-1 h-11 rounded-xl border-gray-200"
+              className="flex-1 h-11 rounded-xl border-border"
               disabled={submitting}
             >
               Batal

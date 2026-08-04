@@ -1,18 +1,21 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import {
   Clock,
   CheckCircle,
   Building2,
+  Camera,
+  Loader2,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
+import { uploadToR2 } from "@/lib/upload"
 import { AttendancePageSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 import type { AttendanceStatus } from "@/types"
@@ -59,7 +62,7 @@ function formatDuration(minutes: number): string {
 }
 
 export default function AttendancePage() {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending: sessionPending } = authClient.useSession()
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [settings, setSettings] = useState<CompanySetting | null>(null)
   const [branches, setBranches] = useState<OfficeBranch[]>([])
@@ -67,6 +70,13 @@ export default function AttendancePage() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [workingMinutes, setWorkingMinutes] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoPreviewType, setPhotoPreviewType] = useState<"check_in" | "check_out" | null>(null)
+  const pendingPhotoFile = useRef<File | null>(null)
+  const pendingPhotoType = useRef<"check_in" | "check_out" | null>(null)
+  const checkInPhotoRef = useRef<HTMLInputElement>(null)
+  const checkOutPhotoRef = useRef<HTMLInputElement>(null)
 
   const currentUserId = session?.user?.id || ""
   const todayStr = format(new Date(), "yyyy-MM-dd")
@@ -77,7 +87,7 @@ export default function AttendancePage() {
   }, [])
 
   const fetchData = useCallback(async () => {
-    if (!currentUserId) return
+    if (sessionPending || !currentUserId) return
     try {
       setLoading(true)
       const [att, set, branchList] = await Promise.all([
@@ -94,10 +104,11 @@ export default function AttendancePage() {
     } finally {
       setLoading(false)
     }
-  }, [currentUserId])
+  }, [currentUserId, sessionPending])
 
   useEffect(() => {
-    if (!currentUserId) return
+    if (sessionPending) return
+    if (!currentUserId) { setLoading(false); return }
     let cancelled = false
     async function load() {
       try {
@@ -119,7 +130,7 @@ export default function AttendancePage() {
     }
     load()
     return () => { cancelled = true }
-  }, [currentUserId])
+  }, [currentUserId, sessionPending])
 
   const todayRecord = records.find((r) => r.date === todayStr)
 
@@ -138,11 +149,10 @@ export default function AttendancePage() {
     }
   }, [isCheckedIn, isCheckedOut, checkInTimeMs, currentTime])
 
-  const handleCheckIn = async () => {
+  const handleCheckIn = async (photo?: File) => {
     if (!currentUserId) return
     setSubmitting(true)
     try {
-      // Get user's GPS location
       let userLocation: { latitude: number; longitude: number } | null = null
       if (navigator.geolocation) {
         try {
@@ -157,11 +167,10 @@ export default function AttendancePage() {
             longitude: pos.coords.longitude,
           }
         } catch {
-          // GPS not available - continue without location
+          // GPS not available
         }
       }
 
-      // Validate against branches if available
       if (userLocation && branches.length > 0) {
         const { checkBranchProximity } = await import("@/lib/geo")
         const result = checkBranchProximity(
@@ -176,6 +185,18 @@ export default function AttendancePage() {
         }
       }
 
+      let photoUrl: string | null = null
+      if (photo) {
+        setPhotoUploading(true)
+        try {
+          photoUrl = await uploadToR2(photo, "attendance")
+        } catch (e: unknown) {
+          toast.warning("Foto gagal diupload, tetap melanjutkan check-in")
+        } finally {
+          setPhotoUploading(false)
+        }
+      }
+
       await apiClient.post("/api/attendance", {
         employeeId: currentUserId,
         date: todayStr,
@@ -185,6 +206,7 @@ export default function AttendancePage() {
           : settings?.latitude && settings?.longitude
             ? JSON.stringify({ latitude: settings.latitude, longitude: settings.longitude })
             : null,
+        checkInPhoto: photoUrl,
         status: "present",
         isLate: false,
         lateMinutes: 0,
@@ -199,13 +221,26 @@ export default function AttendancePage() {
     }
   }
 
-  const handleCheckOut = async () => {
+  const handleCheckOut = async (photo?: File) => {
     if (!todayRecord) return
     setSubmitting(true)
     try {
+      let photoUrl: string | null = null
+      if (photo) {
+        setPhotoUploading(true)
+        try {
+          photoUrl = await uploadToR2(photo, "attendance")
+        } catch (e: unknown) {
+          toast.warning("Foto gagal diupload, tetap melanjutkan check-out")
+        } finally {
+          setPhotoUploading(false)
+        }
+      }
+
       await apiClient.put("/api/attendance", {
         id: todayRecord.id,
         checkOut: new Date().toISOString(),
+        checkOutPhoto: photoUrl,
       })
       toast.success("Check out berhasil!")
       await fetchData()
@@ -217,12 +252,60 @@ export default function AttendancePage() {
     }
   }
 
+  const triggerCheckInPhoto = () => {
+    pendingPhotoType.current = "check_in"
+    checkInPhotoRef.current?.click()
+  }
+
+  const triggerCheckOutPhoto = () => {
+    pendingPhotoType.current = "check_out"
+    checkOutPhotoRef.current?.click()
+  }
+
+  const handlePhotoSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    const type = pendingPhotoType.current
+    pendingPhotoType.current = null
+    if (!file || !type) return
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      pendingPhotoFile.current = file
+      setPhotoPreview(reader.result as string)
+      setPhotoPreviewType(type)
+    }
+    reader.readAsDataURL(file)
+    event.target.value = ""
+  }
+
+  const confirmPhotoUpload = async () => {
+    const file = pendingPhotoFile.current
+    const type = photoPreviewType
+    if (!file || !type) return
+
+    setPhotoPreview(null)
+    setPhotoPreviewType(null)
+    pendingPhotoFile.current = null
+
+    if (type === "check_in") {
+      await handleCheckIn(file)
+    } else if (type === "check_out") {
+      await handleCheckOut(file)
+    }
+  }
+
+  const cancelPhotoPreview = () => {
+    setPhotoPreview(null)
+    setPhotoPreviewType(null)
+    pendingPhotoFile.current = null
+  }
+
   if (loading && !records.length) {
     return <AttendancePageSkeleton />
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Absensi</h1>
         <p className="text-muted-foreground">
@@ -266,15 +349,15 @@ export default function AttendancePage() {
           )}
 
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl bg-gray-50 p-3">
+            <div className="rounded-xl bg-muted p-3">
               <p className="text-xs text-muted-foreground">Jam Masuk</p>
-              <p className="text-base font-bold text-gray-900">
+              <p className="text-base font-bold text-foreground">
                 {checkInTime ? format(checkInTime, "HH:mm") : "--:--"}
               </p>
             </div>
-            <div className="rounded-xl bg-gray-50 p-3">
+            <div className="rounded-xl bg-muted p-3">
               <p className="text-xs text-muted-foreground">Jam Pulang</p>
-              <p className="text-base font-bold text-gray-900">
+              <p className="text-base font-bold text-foreground">
                 {todayRecord?.checkOut
                   ? format(new Date(todayRecord.checkOut), "HH:mm")
                   : "--:--"}
@@ -282,16 +365,65 @@ export default function AttendancePage() {
             </div>
           </div>
 
+          {photoPreview && (
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-muted/30 p-4">
+              <p className="text-sm font-semibold text-foreground">
+                {photoPreviewType === "check_in" ? "Konfirmasi Foto Check In" : "Konfirmasi Foto Check Out"}
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photoPreview} alt="Preview" className="max-h-48 rounded-xl object-contain" />
+              <div className="flex gap-2 w-full">
+                <Button variant="outline" className="flex-1" onClick={cancelPhotoPreview} disabled={submitting || photoUploading}>
+                  Ambil Ulang
+                </Button>
+                <Button
+                  className="flex-1"
+                  variant={photoPreviewType === "check_out" ? "destructive" : "default"}
+                  onClick={confirmPhotoUpload}
+                  disabled={submitting || photoUploading}
+                >
+                  {submitting || photoUploading ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      {submitting ? "Memproses..." : "Mengupload..."}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="size-4" />
+                      Konfirmasi
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
+            <input
+              ref={checkInPhotoRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handlePhotoSelected}
+              className="hidden"
+            />
+            <input
+              ref={checkOutPhotoRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handlePhotoSelected}
+              className="hidden"
+            />
             {!isCheckedIn && (
               <Button
                 size="lg"
                 className="w-full h-12"
-                onClick={handleCheckIn}
-                disabled={submitting}
+                onClick={triggerCheckInPhoto}
+                disabled={submitting || photoUploading}
               >
-                <CheckCircle className="size-4" />
-                {submitting ? "Memproses..." : "Check In Sekarang"}
+                {submitting || photoUploading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+                {submitting ? "Memproses..." : photoUploading ? "Upload Foto..." : "Check In Sekarang"}
               </Button>
             )}
             {isCheckedIn && !isCheckedOut && (
@@ -299,15 +431,15 @@ export default function AttendancePage() {
                 size="lg"
                 variant="destructive"
                 className="w-full h-12"
-                onClick={handleCheckOut}
-                disabled={submitting}
+                onClick={triggerCheckOutPhoto}
+                disabled={submitting || photoUploading}
               >
-                <Clock className="size-4" />
-                {submitting ? "Memproses..." : "Check Out Sekarang"}
+                {submitting || photoUploading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+                {submitting ? "Memproses..." : photoUploading ? "Upload Foto..." : "Check Out Sekarang"}
               </Button>
             )}
             {isCheckedOut && (
-              <div className="rounded-xl bg-gray-100 py-3 text-center text-sm text-gray-500">
+              <div className="rounded-xl bg-muted py-3 text-center text-sm text-muted-foreground">
                 Anda sudah check out hari ini
               </div>
             )}
@@ -351,7 +483,7 @@ export default function AttendancePage() {
             {records.slice(0, 7).map((r) => (
               <div
                 key={r.id}
-                className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-3"
+                className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-3"
               >
                 <div>
                   <p className="text-sm font-semibold">
@@ -371,7 +503,7 @@ export default function AttendancePage() {
                         ? "bg-green-100 text-green-700"
                         : r.status === "late"
                           ? "bg-yellow-100 text-yellow-700"
-                          : "bg-gray-100 text-gray-600"
+                          : "bg-muted text-muted-foreground"
                     }
                   >
                     {r.status === "present" ? "Hadir" : r.status === "late" ? "Telat" : r.status}

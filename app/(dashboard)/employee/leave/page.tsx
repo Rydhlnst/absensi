@@ -49,7 +49,7 @@ function getStatusBadge(status: string) {
 }
 
 export default function LeavePage() {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending: sessionPending } = authClient.useSession()
   const [showForm, setShowForm] = useState(false)
   const [leaveType, setLeaveType] = useState("")
   const [startDate, setStartDate] = useState("")
@@ -62,7 +62,8 @@ export default function LeavePage() {
   const currentUserId = session?.user?.id || ""
 
   useEffect(() => {
-    if (!currentUserId) return
+    if (sessionPending) return
+    if (!currentUserId) { setLoading(false); return }
     let cancelled = false
     async function load() {
       try {
@@ -81,7 +82,7 @@ export default function LeavePage() {
     return () => {
       cancelled = true
     }
-  }, [currentUserId])
+  }, [currentUserId, sessionPending])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -125,7 +126,7 @@ export default function LeavePage() {
   }
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6">
       <div>
         <Link
           href="/employee/dashboard"
@@ -167,7 +168,7 @@ export default function LeavePage() {
                 <Label htmlFor="leaveType">Jenis Pengajuan</Label>
                 <select
                   id="leaveType"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   value={leaveType}
                   onChange={(e) => setLeaveType(e.target.value)}
                   required
@@ -247,7 +248,7 @@ export default function LeavePage() {
               {leaves.map((leave) => (
                 <div
                   key={leave.id}
-                  className="rounded-xl border border-gray-200 p-3 flex items-start justify-between gap-3"
+                  className="rounded-xl border border-border p-3 flex items-start justify-between gap-3"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -260,9 +261,9 @@ export default function LeavePage() {
                       {format(new Date(leave.endDate), "dd MMM yyyy", { locale: id })}
                     </p>
                     {leave.reason && (
-                      <p className="text-xs text-gray-600 mt-1.5 italic">&quot;{leave.reason}&quot;</p>
+                      <p className="text-xs text-muted-foreground mt-1.5 italic">&quot;{leave.reason}&quot;</p>
                     )}
-                    <p className="text-[10px] text-gray-400 mt-1">
+                    <p className="text-[10px] text-muted-foreground mt-1">
                       Diajukan: {format(new Date(leave.createdAt), "dd MMM yyyy HH:mm", { locale: id })}
                     </p>
                   </div>

@@ -8,6 +8,8 @@ import { apiClient } from "@/lib/api"
 import { AttendanceHistorySkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 import type { AttendanceStatus } from "@/types"
+import EmptyState from "@/components/empty-state"
+import { CalendarX, Snowflake } from "lucide-react"
 
 const monthNames = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -27,7 +29,7 @@ const statusDotColor: Record<AttendanceStatus, string> = {
   late: "bg-yellow-500",
   absent: "bg-red-500",
   leave: "bg-blue-500",
-  holiday: "bg-gray-400",
+  holiday: "bg-muted",
 }
 
 interface AttendanceRecord {
@@ -38,6 +40,7 @@ interface AttendanceRecord {
   checkOut: string | null
   status: AttendanceStatus
   workingDuration: number
+  isFrozen: boolean | null
 }
 
 interface UserProfile {
@@ -60,7 +63,7 @@ function formatDurationShort(minutes: number): string {
 type FilterType = "hari" | "bulan" | "tahun" | "rentang"
 
 export default function AttendanceHistoryPage() {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending: sessionPending } = authClient.useSession()
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -74,7 +77,8 @@ export default function AttendanceHistoryPage() {
   const currentUserId = session?.user?.id || ""
 
   useEffect(() => {
-    if (!currentUserId) return
+    if (sessionPending) return
+    if (!currentUserId) { setLoading(false); return }
     let cancelled = false
     async function load() {
       try {
@@ -99,7 +103,7 @@ export default function AttendanceHistoryPage() {
     return () => {
       cancelled = true
     }
-  }, [currentUserId])
+  }, [currentUserId, sessionPending])
 
   const filteredRecords = useMemo(() => {
     let res = records
@@ -122,8 +126,11 @@ export default function AttendanceHistoryPage() {
     )
     const onTime = filteredRecords.filter((a) => a.status === "present").length
     const late = filteredRecords.filter((a) => a.status === "late").length
-    const totalMinutes = present.reduce((sum, a) => sum + (a.workingDuration || 0), 0)
+    const totalMinutes = present.reduce(
+      (sum, a) => sum + (a.isFrozen ? 0 : (a.workingDuration || 0)), 0
+    )
     const totalSalary = present.reduce((sum, a) => {
+      if (a.isFrozen) return sum
       const rate = (profile?.salary || 0) / 22 / 8 / 60
       return sum + Math.round((a.workingDuration || 0) * rate)
     }, 0)
@@ -147,16 +154,16 @@ export default function AttendanceHistoryPage() {
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Riwayat &amp; Gaji</h1>
-        <span className="rounded-lg bg-gray-100 px-3 py-1 text-sm font-bold text-gray-600">
+        <h1 className="text-xl font-bold text-foreground">Riwayat &amp; Gaji</h1>
+        <span className="rounded-lg bg-muted px-3 py-1 text-sm font-bold text-muted-foreground">
           {filteredRecords.length} Log
         </span>
       </div>
 
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tipe Filter</p>
+      <div className="rounded-2xl bg-card shadow-sm border border-border p-4 space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipe Filter</p>
         <div className="grid grid-cols-4 gap-1.5">
           {(["hari", "bulan", "tahun", "rentang"] as FilterType[]).map((ft) => (
             <button
@@ -165,7 +172,7 @@ export default function AttendanceHistoryPage() {
               className={`rounded-lg py-2 text-sm font-semibold transition-colors ${
                 filterType === ft
                   ? "bg-primary text-white"
-                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  : "border border-border text-muted-foreground hover:bg-muted/50"
               }`}
             >
               {ft.charAt(0).toUpperCase() + ft.slice(1)}
@@ -176,11 +183,11 @@ export default function AttendanceHistoryPage() {
         {filterType === "bulan" && (
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Pilih Bulan</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Pilih Bulan</label>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {monthNames.map((m, i) => (
                   <option key={i + 1} value={i + 1}>{m}</option>
@@ -188,11 +195,11 @@ export default function AttendanceHistoryPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Pilih Tahun</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Pilih Tahun</label>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {years.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
@@ -202,23 +209,23 @@ export default function AttendanceHistoryPage() {
 
         {filterType === "hari" && (
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Pilih Hari</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Pilih Hari</label>
             <input
               type="date"
               value={selectedDay}
               onChange={(e) => setSelectedDay(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
         )}
 
         {filterType === "tahun" && (
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Pilih Tahun</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Pilih Tahun</label>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
@@ -228,28 +235,28 @@ export default function AttendanceHistoryPage() {
         {filterType === "rentang" && (
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Dari</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Dari</label>
               <input
                 type="date"
                 value={rangeStart}
                 onChange={(e) => setRangeStart(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Sampai</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Sampai</label>
               <input
                 type="date"
                 value={rangeEnd}
                 onChange={(e) => setRangeEnd(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
         )}
       </div>
 
-      <div className="rounded-2xl p-5 space-y-4 shadow-sm" style={{ backgroundColor: "#1e3a8a" }}>
+      <div className="rounded-2xl p-5 space-y-4 shadow-sm bg-primary">
         <div className="flex items-center justify-between">
           <p className="text-base font-bold text-white">Ringkasan Periode Ini</p>
           <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold text-white uppercase tracking-wider">
@@ -289,38 +296,43 @@ export default function AttendanceHistoryPage() {
       </div>
 
       <div>
-        <h2 className="text-sm font-bold text-gray-900 mb-3">Rincian Log Kehadiran</h2>
+        <h2 className="text-sm font-bold text-foreground mb-3">Rincian Log Kehadiran</h2>
         {filteredRecords.length === 0 ? (
-          <div className="rounded-2xl bg-white p-8 text-center text-gray-400 text-sm shadow-sm border border-gray-200">
-            Tidak ada riwayat absensi
-          </div>
+          <EmptyState icon={CalendarX} title="Tidak ada riwayat" description="Belum ada data absensi untuk periode ini" />
         ) : (
           <div className="space-y-2">
             {filteredRecords.map((rec) => (
-              <div key={rec.id} className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4">
+              <div key={rec.id} className="rounded-2xl bg-card shadow-sm border border-border p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className={`size-2 rounded-full shrink-0 ${statusDotColor[rec.status]}`} />
-                    <span className="text-sm font-semibold text-gray-900">
+                    <span className="text-sm font-semibold text-foreground">
                       {format(new Date(rec.date), "EEEE, dd MMM yyyy", { locale: id })}
                     </span>
+                    {rec.isFrozen && (
+                      <span className="flex items-center gap-0.5 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
+                        <Snowflake className="size-2.5" /> Dibekukan
+                      </span>
+                    )}
                   </div>
-                  <span className="text-xs font-semibold text-gray-500">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     {statusLabel[rec.status]}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Masuk</p>
-                    <p className="text-sm font-bold text-gray-900">{formatTime(rec.checkIn)}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Masuk</p>
+                    <p className="text-sm font-bold text-foreground">{formatTime(rec.checkIn)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Pulang</p>
-                    <p className="text-sm font-bold text-gray-900">{formatTime(rec.checkOut)}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pulang</p>
+                    <p className="text-sm font-bold text-foreground">{formatTime(rec.checkOut)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Durasi</p>
-                    <p className="text-sm font-bold text-primary">{formatDurationShort(rec.workingDuration || 0)}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Durasi</p>
+                    <p className={`text-sm font-bold ${rec.isFrozen ? "text-warning" : "text-primary"}`}>
+                      {rec.isFrozen ? "Dibekukan" : formatDurationShort(rec.workingDuration || 0)}
+                    </p>
                   </div>
                 </div>
               </div>

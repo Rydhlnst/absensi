@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { leave, user } from "@/lib/schema";
+import { leave, user, notification } from "@/lib/schema";
 import { eq, desc, and } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -101,6 +101,23 @@ export async function PUT(request: NextRequest) {
 
     if (updated.length === 0) {
       return NextResponse.json({ error: "Leave not found" }, { status: 404 });
+    }
+
+    // Notify employee on leave approval/rejection
+    const leaveRecord = updated[0];
+    if (status === "approved" || status === "rejected") {
+      await db.insert(notification).values({
+        id: crypto.randomUUID(),
+        userId: leaveRecord.employeeId,
+        title: status === "approved" ? "Cuti Disetujui" : "Cuti Ditolak",
+        message: status === "approved"
+          ? "Pengajuan cuti Anda telah disetujui."
+          : `Pengajuan cuti Anda ditolak.${rejectionReason ? ` Alasan: ${rejectionReason}` : ""}`,
+        type: "attendance",
+        isRead: false,
+        createdAt: new Date(),
+        link: "/employee/attendance",
+      });
     }
 
     return NextResponse.json(updated[0]);

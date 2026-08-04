@@ -18,14 +18,22 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import { authClient } from "@/lib/auth-client"
 
-const demoAccounts = [
-  { label: "Super Admin", email: "superadmin@mitrasolusindo.co.id", password: "password123" },
-  { label: "Admin", email: "admin@mitrasolusindo.co.id", password: "password123" },
-  { label: "Employee", email: "budi.santoso@mitrasolusindo.co.id", password: "password123" },
-]
+
+async function generateDeviceId(): Promise<string> {
+  const raw = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + "x" + screen.height,
+    new Date().getTimezoneOffset().toString(),
+  ].join("|")
+  const encoder = new TextEncoder()
+  const data = encoder.encode(raw)
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+}
 
 function getRedirectPath(role: string): string {
   switch (role) {
@@ -63,18 +71,30 @@ export default function LoginPage() {
 
     const session = await authClient.getSession()
     const role = (session.data?.user as Record<string, unknown>)?.role as string || "employee"
+    const userId = session.data?.user?.id as string | undefined
+
+    // Auto-bind device on login
+    if (userId) {
+      try {
+        const deviceId = await generateDeviceId()
+        const deviceName = navigator.userAgent.slice(0, 100)
+        const platform = navigator.platform || "unknown"
+        await fetch("/api/devices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, deviceId, deviceName, platform }),
+        })
+      } catch {
+        // Device binding is non-blocking
+      }
+    }
+
     router.push(getRedirectPath(role))
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     handleSignIn(email, password)
-  }
-
-  const handleDemoLogin = (demo: (typeof demoAccounts)[number]) => {
-    setEmail(demo.email)
-    setPassword(demo.password)
-    handleSignIn(demo.email, demo.password)
   }
 
   return (
@@ -220,29 +240,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="space-y-4">
-            <div className="relative">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-                Demo Quick Login
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {demoAccounts.map((demo) => (
-                <Button
-                  key={demo.email}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDemoLogin(demo)}
-                  disabled={loading}
-                  className="text-xs"
-                >
-                  {demo.label}
-                </Button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

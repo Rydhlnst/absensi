@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { Printer, Share2, Trash2, DollarSign, Clock, FileText } from "lucide-react"
+import { Printer, Share2, Trash2, DollarSign, Clock, FileText, FileSearch } from "lucide-react"
+import EmptyState from "@/components/empty-state"
 import { apiClient } from "@/lib/api"
 import { generatePDF, generateExcel, formatCurrency, formatDateTime } from "@/lib/export"
 import { toast } from "sonner"
@@ -27,7 +28,7 @@ const statusDot: Record<AttendanceStatus, string> = {
   late: "bg-yellow-500",
   absent: "bg-red-500",
   leave: "bg-blue-500",
-  holiday: "bg-gray-400",
+  holiday: "bg-muted",
 }
 
 interface Attendance {
@@ -243,7 +244,7 @@ export default function AdminReportsPage() {
       <div className="flex gap-2">
         <button
           onClick={handleExportPDF}
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+          className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-sm font-semibold text-foreground shadow-sm hover:bg-muted/50"
         >
           <Printer className="size-4" />
           Cetak PDF
@@ -257,13 +258,13 @@ export default function AdminReportsPage() {
         </button>
       </div>
 
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+      <div className="rounded-2xl bg-card shadow-sm border border-border p-4 space-y-3">
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Pilih Karyawan</label>
+          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Pilih Karyawan</label>
           <select
             value={selectedEmployee}
             onChange={(e) => setSelectedEmployee(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="all">Semua Karyawan</option>
             {employees
@@ -273,11 +274,11 @@ export default function AdminReportsPage() {
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Tipe Filter Waktu</label>
+          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Tipe Filter Waktu</label>
           <select
             value={timeFilter}
             onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
-            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="harian">Harian (Satu Hari)</option>
             <option value="bulanan">Bulanan</option>
@@ -287,12 +288,12 @@ export default function AdminReportsPage() {
 
         {timeFilter === "harian" && (
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Pilih Hari</label>
+            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Pilih Hari</label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
         )}
@@ -300,21 +301,21 @@ export default function AdminReportsPage() {
         {timeFilter === "bulanan" && (
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Bulan</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Bulan</label>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {monthNames.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Tahun</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Tahun</label>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {years.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
@@ -324,11 +325,11 @@ export default function AdminReportsPage() {
 
         {timeFilter === "tahunan" && (
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Tahun</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Tahun</label>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
@@ -339,36 +340,36 @@ export default function AdminReportsPage() {
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4 flex items-start justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Total Gaji</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Total Gaji</p>
             <p className="text-lg font-extrabold text-blue-700 mt-1">{formatCurrency(stats.totalSalary)}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">Akumulasi upah terfilter</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Akumulasi upah terfilter</p>
           </div>
           <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 shrink-0"><DollarSign className="size-5 text-blue-600" /></div>
         </div>
         <div className="rounded-2xl bg-green-50 border border-green-100 p-4 flex items-start justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Total Waktu</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Total Waktu</p>
             <p className="text-lg font-extrabold text-green-700 mt-1">
               {Math.floor(stats.totalMinutes / 60)}J {stats.totalMinutes % 60}M
             </p>
-            <p className="text-[10px] text-gray-500 mt-0.5">Jam kerja bersih</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Jam kerja bersih</p>
           </div>
           <div className="flex size-10 items-center justify-center rounded-xl bg-green-100 shrink-0"><Clock className="size-5 text-green-600" /></div>
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 flex items-start justify-between">
+      <div className="rounded-2xl bg-card shadow-sm border border-border p-4 flex items-start justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Jumlah Data</p>
-          <p className="text-2xl font-extrabold text-gray-900 mt-1">{stats.totalLogs} Log</p>
-          <p className="text-xs text-gray-500 mt-0.5">Total catatan terfilter</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Jumlah Data</p>
+          <p className="text-2xl font-extrabold text-foreground mt-1">{stats.totalLogs} Log</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Total catatan terfilter</p>
         </div>
         <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 shrink-0"><FileText className="size-5 text-blue-600" /></div>
       </div>
 
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h2 className="text-sm font-bold text-gray-900">Log Aktivitas Absensi Detil</h2>
+      <div className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-border/50">
+          <h2 className="text-sm font-bold text-foreground">Log Aktivitas Absensi Detil</h2>
           <button
             onClick={handleDeleteAll}
             className="flex items-center gap-1.5 rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
@@ -379,7 +380,7 @@ export default function AdminReportsPage() {
         </div>
 
         {filteredLogs.length === 0 ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Tidak ada log ditemukan</div>
+          <EmptyState icon={FileSearch} title="Tidak ada log" description="Tidak ada data absensi untuk filter ini" />
         ) : (
           <div className="divide-y divide-gray-50">
             {filteredLogs.slice(0, 50).map((log) => {
@@ -388,14 +389,14 @@ export default function AdminReportsPage() {
                 <div key={log.id} className="p-4 flex items-center gap-3">
                   <span className={`size-2 rounded-full shrink-0 ${statusDot[log.status]}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{emp?.name || "-"}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-sm font-semibold text-foreground truncate">{emp?.name || "-"}</p>
+                    <p className="text-xs text-muted-foreground">
                       {format(new Date(log.date), "dd MMM yyyy", { locale: id })}
                       {log.checkIn && ` · Masuk: ${formatDateTime(log.checkIn)}`}
                       {log.checkOut && ` · Pulang: ${formatDateTime(log.checkOut)}`}
                     </p>
                   </div>
-                  <span className="text-xs font-semibold text-gray-500 shrink-0">{statusLabel[log.status]}</span>
+                  <span className="text-xs font-semibold text-muted-foreground shrink-0">{statusLabel[log.status]}</span>
                 </div>
               )
             })}

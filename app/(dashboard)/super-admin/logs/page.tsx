@@ -12,6 +12,7 @@ import {
   CheckSquare,
   ClipboardList,
   Settings,
+  Trash2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,16 @@ import { apiClient } from "@/lib/api"
 import { AdminTableSkeleton } from "@/components/skeletons"
 import { getAvatarUrl } from "@/lib/utils"
 import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface LogEntry {
   id: string
@@ -50,7 +61,7 @@ const typeConfig: Record<string, { label: string; color: string; icon: typeof Lo
   attendance: { label: "Absensi", color: "bg-orange-100 text-orange-700", icon: ClipboardList },
   settings_change: { label: "Settings", color: "bg-purple-100 text-purple-700", icon: Settings },
   task: { label: "Tugas", color: "bg-blue-100 text-blue-700", icon: CheckSquare },
-  reward: { label: "Reward", color: "bg-amber-100 text-amber-700", icon: Settings },
+  reward: { label: "Reward", color: "bg-warning/20 text-warning", icon: Settings },
   system: { label: "Sistem", color: "bg-purple-100 text-purple-700", icon: Settings },
   warning: { label: "Peringatan", color: "bg-red-100 text-red-700", icon: Settings },
 }
@@ -65,6 +76,8 @@ export default function SystemLogsPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [page, setPage] = useState(1)
+  const [clearDialogOpen, setClearDialogOpen] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -102,6 +115,20 @@ export default function SystemLogsPage() {
     return result
   }, [logs, search, typeFilter])
 
+  const handleClearLogs = async () => {
+    setClearing(true)
+    try {
+      await apiClient.delete("/api/system-logs")
+      setLogs([])
+      toast.success("Semua log berhasil dihapus")
+      setClearDialogOpen(false)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal menghapus log")
+    } finally {
+      setClearing(false)
+    }
+  }
+
   const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE)
   const paginatedLogs = filteredLogs.slice(
     (page - 1) * ITEMS_PER_PAGE,
@@ -114,9 +141,17 @@ export default function SystemLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Log Sistem</h1>
-        <p className="text-muted-foreground">Riwayat aktivitas sistem</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Log Sistem</h1>
+          <p className="text-muted-foreground">Riwayat aktivitas sistem</p>
+        </div>
+        {logs.length > 0 && (
+          <Button variant="destructive" size="sm" onClick={() => setClearDialogOpen(true)}>
+            <Trash2 className="size-4" />
+            Hapus Semua Log
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -164,7 +199,7 @@ export default function SystemLogsPage() {
                 return (
                   <div
                     key={log.id}
-                    className="flex items-start gap-3 rounded-xl border border-gray-200 p-3"
+                    className="flex items-start gap-3 rounded-xl border border-border p-3"
                   >
                     {log.userImage || log.userName ? (
                       <Avatar size="sm">
@@ -181,7 +216,7 @@ export default function SystemLogsPage() {
                         <Badge variant="outline" className={config.color}>{config.label}</Badge>
                         {log.userName && <span className="text-sm font-semibold">{log.userName}</span>}
                       </div>
-                      <p className="text-sm text-gray-700">{log.detail}</p>
+                      <p className="text-sm text-foreground">{log.detail}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {format(new Date(log.timestamp), "dd MMM yyyy HH:mm:ss", { locale: id })}
                         {log.ipAddress && ` · ${log.ipAddress}`}
@@ -210,6 +245,23 @@ export default function SystemLogsPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Semua Log?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini akan menghapus semua log aktivitas secara permanen. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearing}>Batal</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleClearLogs} disabled={clearing}>
+              {clearing ? "Menghapus..." : "Hapus Semua"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

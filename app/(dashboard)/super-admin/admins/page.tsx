@@ -6,6 +6,7 @@ import {
   Pencil,
   Trash2,
   Loader2,
+  Shield,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -32,6 +33,7 @@ import {
 import { apiClient } from "@/lib/api"
 import { AdminTableSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
+import EmptyState from "@/components/empty-state"
 
 interface AdminUser {
   id: string
@@ -227,15 +229,13 @@ export default function AdminManagementPage() {
         </CardHeader>
         <CardContent>
           {filteredAdmins.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Tidak ada admin ditemukan
-            </p>
+            <EmptyState icon={Shield} title="Tidak ada admin ditemukan" description="Tidak ada admin yang cocok dengan pencarian Anda" />
           ) : (
             <div className="space-y-2">
               {filteredAdmins.map((admin) => (
                 <div
                   key={admin.id}
-                  className="flex items-center gap-3 rounded-xl border border-gray-200 p-3"
+                  className="flex items-center gap-3 rounded-xl border border-border p-3"
                 >
                   <Avatar size="default">
                     <AvatarImage src={admin.image || getAvatarUrl(admin.name)} />

@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
 
     const updates: Record<string, unknown> = {
       updatedAt: new Date(),
+      joinDate: new Date(),
     };
     if (role) updates.role = role;
     if (department !== undefined) updates.department = department;

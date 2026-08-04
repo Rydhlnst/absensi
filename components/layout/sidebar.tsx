@@ -14,6 +14,10 @@ import {
   ScrollText,
   CalendarCheck,
   FileText,
+  BarChart2,
+  Home,
+  DollarSign,
+  CalendarOff,
 } from "lucide-react"
 
 import type { Role, User } from "@/types"
@@ -50,6 +54,7 @@ function getMenusByRole(role: Role): MenuItem[] {
         { title: "Roles", url: "/super-admin/roles", icon: ShieldCheck },
         { title: "Absensi", url: "/super-admin/attendance", icon: CalendarCheck },
         { title: "Tugas", url: "/super-admin/tasks", icon: ClipboardList },
+        { title: "Gaji", url: "/super-admin/salaries", icon: DollarSign },
         { title: "Laporan", url: "/super-admin/reports", icon: FileText },
         { title: "Log Sistem", url: "/super-admin/logs", icon: ScrollText },
         { title: "Pengaturan", url: "/super-admin/settings", icon: Settings },
@@ -60,9 +65,18 @@ function getMenusByRole(role: Role): MenuItem[] {
         { title: "Monitoring Absensi", url: "/admin/attendance", icon: CalendarCheck },
         { title: "Kelola Tugas", url: "/admin/tasks", icon: ClipboardList },
         { title: "Data Teknisi", url: "/admin/employees", icon: Users },
+        { title: "Gaji", url: "/admin/salaries", icon: DollarSign },
         { title: "Hadiah & Klaim", url: "/admin/rewards", icon: Gift },
+        { title: "Approval Cuti", url: "/admin/leave-approvals", icon: CalendarOff },
         { title: "Log & Laporan", url: "/admin/reports", icon: History },
         { title: "Pengaturan Sistem", url: "/admin/settings", icon: Settings },
+      ]
+    case "employee":
+      return [
+        { title: "Beranda", url: "/employee/dashboard", icon: Home },
+        { title: "Tugas", url: "/employee/tasks", icon: ClipboardList },
+        { title: "Riwayat", url: "/employee/attendance-history", icon: BarChart2 },
+        { title: "Hadiah", url: "/employee/rewards", icon: Gift },
       ]
     default:
       return []

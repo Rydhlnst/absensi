@@ -55,7 +55,7 @@ export default function AdminDashboardPage() {
       icon: BookOpen,
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
-      valueColor: "text-gray-900",
+      valueColor: "text-foreground",
     },
     {
       key: "working",
@@ -64,7 +64,7 @@ export default function AdminDashboardPage() {
       icon: HardHat,
       iconBg: "bg-green-100",
       iconColor: "text-green-600",
-      valueColor: "text-gray-900",
+      valueColor: "text-foreground",
     },
     {
       key: "notAbsent",
@@ -80,9 +80,9 @@ export default function AdminDashboardPage() {
       label: "Total Gaji Berjalan",
       value: stats.monthlySalary,
       icon: Wallet,
-      iconBg: "bg-amber-100",
-      iconColor: "text-amber-600",
-      valueColor: "text-gray-900",
+      iconBg: "bg-warning/20",
+      iconColor: "text-warning",
+      valueColor: "text-foreground",
       isCurrency: true,
     },
   ] : []
@@ -92,12 +92,12 @@ export default function AdminDashboardPage() {
       <div className="space-y-3">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-gray-200">
+            <div key={i} className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-sm border border-border">
               <div>
-                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-2" />
-                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-muted rounded animate-pulse mb-2" />
+                <div className="h-8 w-16 bg-muted rounded animate-pulse" />
               </div>
-              <div className="size-14 rounded-2xl bg-gray-200 animate-pulse" />
+              <div className="size-14 rounded-2xl bg-muted animate-pulse" />
             </div>
           ))
         ) : (
@@ -109,10 +109,10 @@ export default function AdminDashboardPage() {
             return (
               <div
                 key={card.key}
-                className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm border border-gray-200"
+                className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-sm border border-border"
               >
                 <div>
-                  <p className="text-sm font-medium text-gray-600">{card.label}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
                   <p className={`text-3xl font-extrabold mt-1 ${card.valueColor}`}>{displayValue}</p>
                 </div>
                 <div className={`flex size-14 items-center justify-center rounded-2xl ${card.iconBg}`}>
@@ -124,14 +124,14 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
+      <div className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden">
         <div className="flex items-center justify-between p-4 pb-3">
           <div className="flex items-center gap-2">
             <div className="size-2.5 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-sm font-semibold text-gray-700">Pemantauan Lokasi Real-time</span>
+            <span className="text-sm font-semibold text-foreground">Pemantauan Lokasi Real-time</span>
           </div>
-          <button className="flex size-9 items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
-            <Layers className="size-4 text-gray-600" />
+          <button className="flex size-9 items-center justify-center rounded-lg border border-border bg-card hover:bg-muted/50">
+            <Layers className="size-4 text-muted-foreground" />
           </button>
         </div>
 
@@ -160,16 +160,16 @@ export default function AdminDashboardPage() {
             <text x="60" y="180" fontSize="9" fill="#5a8a4a" fontWeight="600" opacity="0.6">Sibolga</text>
           </svg>
 
-          <div className="absolute top-3 right-3 flex flex-col rounded-lg overflow-hidden shadow-md border border-gray-200 bg-white">
-            <button className="size-8 flex items-center justify-center hover:bg-gray-50 text-gray-700 font-bold border-b border-gray-200">+</button>
-            <button className="size-8 flex items-center justify-center hover:bg-gray-50 text-gray-700 font-bold">−</button>
+          <div className="absolute top-3 right-3 flex flex-col rounded-lg overflow-hidden shadow-md border border-border bg-card">
+            <button className="size-8 flex items-center justify-center hover:bg-muted/50 text-foreground font-bold border-b border-border">+</button>
+            <button className="size-8 flex items-center justify-center hover:bg-muted/50 text-foreground font-bold">−</button>
           </div>
 
           <div className="absolute" style={{ left: "30%", top: "55%" }}>
             <MapPin className="size-10 text-red-600 fill-red-600 drop-shadow-lg" />
           </div>
 
-          <div className="absolute bottom-1 right-1 text-[9px] text-gray-600 bg-white/80 px-1.5 py-0.5 rounded">
+          <div className="absolute bottom-1 right-1 text-[9px] text-muted-foreground bg-card/80 px-1.5 py-0.5 rounded">
             © OpenStreetMap
           </div>
         </div>

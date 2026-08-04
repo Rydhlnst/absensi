@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useTransition } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { MapPin, RefreshCw } from "lucide-react"
+import { MapPin, RefreshCw, Users, Snowflake } from "lucide-react"
+import EmptyState from "@/components/empty-state"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { apiClient } from "@/lib/api"
 import { getAvatarUrl } from "@/lib/utils"
@@ -26,8 +27,11 @@ interface AttendanceRecord {
   checkOut: string | null
   status: AttendanceStatus
   workingDuration: number
+  isFrozen: boolean | null
   checkInLocation?: { address: string; latitude: number; longitude: number } | null
   checkOutLocation?: { address: string; latitude: number; longitude: number } | null
+  checkInPhoto?: string | null
+  checkOutPhoto?: string | null
 }
 
 function getInitials(name: string): string {
@@ -146,12 +150,12 @@ export default function AdminAttendancePage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           {format(new Date(), "EEEE, dd MMMM yyyy", { locale: id })}
         </p>
         <button
           onClick={load}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+          className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/50"
         >
           <RefreshCw className="size-3.5" />
           Refresh
@@ -177,11 +181,11 @@ export default function AdminAttendancePage() {
             <button
               key={key}
               onClick={() => setActiveFilter(key)}
-              className={`rounded-2xl border-2 bg-white p-3 text-center shadow-sm transition-all ${
-                isActive ? colors[key] + " shadow-md" : "border-gray-200 text-gray-500"
+              className={`rounded-2xl border-2 bg-card p-3 text-center shadow-sm transition-all ${
+                isActive ? colors[key] + " shadow-md" : "border-border text-muted-foreground"
               }`}
             >
-              <p className={`text-2xl font-bold ${isActive ? "" : "text-gray-800"}`}>{stats[key]}</p>
+              <p className={`text-2xl font-bold ${isActive ? "" : "text-foreground"}`}>{stats[key]}</p>
               <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide leading-tight">{labels[key]}</p>
             </button>
           )
@@ -190,9 +194,7 @@ export default function AdminAttendancePage() {
 
       <div className="space-y-3">
         {filteredEmployees.length === 0 ? (
-          <div className="rounded-2xl bg-white p-8 text-center text-sm text-gray-400 shadow-sm border border-gray-200">
-            Tidak ada data untuk filter ini
-          </div>
+          <EmptyState icon={Users} title="Tidak ada data" description="Tidak ada data untuk filter ini" />
         ) : (
           filteredEmployees.map((emp) => {
             const rec = getRecordForEmployee(emp.id)
@@ -203,7 +205,7 @@ export default function AdminAttendancePage() {
             const location = rec?.checkInLocation
 
             return (
-              <div key={emp.id} className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
+              <div key={emp.id} className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden">
                 <div className="flex items-center gap-3 p-4 pb-3">
                   <Avatar size="lg" className="!size-14 shrink-0">
                     <AvatarImage src={emp.image || getAvatarUrl(emp.name)} alt={emp.name} />
@@ -212,8 +214,8 @@ export default function AdminAttendancePage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 uppercase text-sm leading-tight">{emp.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{emp.position || "Teknisi"}</p>
+                    <p className="font-bold text-foreground uppercase text-sm leading-tight">{emp.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{emp.position || "Teknisi"}</p>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide shrink-0 ${sc.bg} ${sc.text}`}>
                     <span className={`inline-block size-1.5 rounded-full mr-1.5 ${sc.dot}`} />
@@ -221,29 +223,36 @@ export default function AdminAttendancePage() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 divide-x divide-gray-100 border-t border-gray-100">
+                <div className="grid grid-cols-3 divide-x divide-border/50 border-t border-border/50">
                   <div className="p-3 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Masuk</p>
-                    <p className="mt-1 text-base font-bold text-gray-900">{formatTime(rec?.checkIn ?? null)}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Masuk</p>
+                    <p className="mt-1 text-base font-bold text-foreground">{formatTime(rec?.checkIn ?? null)}</p>
                   </div>
                   <div className="p-3 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Pulang</p>
-                    <p className="mt-1 text-base font-bold text-gray-900">{formatTime(rec?.checkOut ?? null)}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pulang</p>
+                    <p className="mt-1 text-base font-bold text-foreground">{formatTime(rec?.checkOut ?? null)}</p>
                   </div>
                   <div className="p-3 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Durasi</p>
-                    <p className="mt-1 text-base font-bold text-primary">{formatDuration(rec?.workingDuration ?? 0)}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Durasi</p>
+                    <p className={`mt-1 text-base font-bold ${rec?.isFrozen ? "text-warning" : "text-primary"}`}>
+                      {rec?.isFrozen ? "Dibekukan" : formatDuration(rec?.workingDuration ?? 0)}
+                    </p>
+                    {rec?.isFrozen && (
+                      <span className="mt-0.5 inline-flex items-center gap-0.5 text-[9px] font-semibold text-warning">
+                        <Snowflake className="size-2.5" /> Freeze Aktif
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-t border-gray-100">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Gaji Berjalan</p>
-                  <p className="text-sm font-bold text-gray-900">{formatSalary(earning)}</p>
+                <div className="flex items-center justify-between bg-muted/50 px-4 py-2.5 border-t border-border/50">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Gaji Berjalan</p>
+                  <p className="text-sm font-bold text-foreground">{formatSalary(earning)}</p>
                 </div>
 
                 {location && (
-                  <div className="flex items-start gap-2 border-t border-gray-100 px-4 py-2.5">
-                    <MapPin className="mt-0.5 size-3.5 shrink-0 text-gray-400" />
+                  <div className="flex items-start gap-2 border-t border-border/50 px-4 py-2.5">
+                    <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                     <a
                       href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
                       target="_blank"
@@ -252,6 +261,29 @@ export default function AdminAttendancePage() {
                     >
                       {location.address}
                     </a>
+                  </div>
+                )}
+
+                {(rec?.checkInPhoto || rec?.checkOutPhoto) && (
+                  <div className="flex items-center gap-2 border-t border-border/50 px-4 py-2.5">
+                    {rec?.checkInPhoto && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase">Masuk:</span>
+                        <a href={rec.checkInPhoto} target="_blank" rel="noopener noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={rec.checkInPhoto} alt="Foto check-in" className="size-10 rounded-lg object-cover border border-border" />
+                        </a>
+                      </div>
+                    )}
+                    {rec?.checkOutPhoto && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase">Pulang:</span>
+                        <a href={rec.checkOutPhoto} target="_blank" rel="noopener noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={rec.checkOutPhoto} alt="Foto check-out" className="size-10 rounded-lg object-cover border border-border" />
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

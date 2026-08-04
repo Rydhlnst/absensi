@@ -1,21 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { ArrowLeft, Phone, MessageCircle, MapPin, Camera, PlayCircle, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, Phone, MessageCircle, MapPin, Camera, PlayCircle, CheckCircle2, Loader2, FileImage } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { apiClient } from "@/lib/api"
+import { uploadMultipleToR2 } from "@/lib/upload"
 import { toast } from "sonner"
 import type { Task, TaskCategory, TaskPriority, TaskStatus } from "@/types"
 
 const categoryColor: Record<TaskCategory, string> = {
   installation: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  maintenance: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  maintenance: "bg-warning/10 text-warning border-warning/20",
   billing: "bg-purple-500/10 text-purple-600 border-purple-500/20",
   repair: "bg-red-500/10 text-red-600 border-red-500/20",
   inspection: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
@@ -33,7 +34,7 @@ const statusColor: Record<TaskStatus, string> = {
   in_progress: "bg-blue-500/10 text-blue-600 border-blue-500/20",
   completed: "bg-green-500/10 text-green-600 border-green-500/20",
   cancelled: "bg-red-500/10 text-red-600 border-red-500/20",
-  on_hold: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+  on_hold: "bg-muted/10 text-muted-foreground border-muted-foreground/20",
 }
 
 const categoryLabel: Record<TaskCategory, string> = {
@@ -90,6 +91,9 @@ export default function TaskDetailPage() {
     employeeName: string | null
   }>>([])
   const [loading, setLoading] = useState(true)
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
+  const [attachmentPreviews, setAttachmentPreviews] = useState<Array<{ file: File; url: string }>>([])
+  const attachmentInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -125,6 +129,53 @@ export default function TaskDetailPage() {
       cancelled = true
     }
   }, [taskId])
+
+  const handleAttachmentSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+    const newPreviews = Array.from(files).map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }))
+    setAttachmentPreviews((prev) => [...prev, ...newPreviews])
+    if (attachmentInputRef.current) attachmentInputRef.current.value = ""
+  }
+
+  const removeAttachmentPreview = (idx: number) => {
+    setAttachmentPreviews((prev) => {
+      const updated = [...prev]
+      URL.revokeObjectURL(updated[idx].url)
+      updated.splice(idx, 1)
+      return updated
+    })
+  }
+
+  const confirmAttachmentUpload = async () => {
+    if (attachmentPreviews.length === 0 || !task) return
+    setUploadingAttachment(true)
+    try {
+      const urls = await uploadMultipleToR2(
+        attachmentPreviews.map((p) => p.file),
+        "attachments"
+      )
+      let existingAtts: string[] = []
+      const attStr = (task.attachments as unknown as string) || "[]"
+      try { existingAtts = JSON.parse(attStr) } catch { existingAtts = attStr ? [attStr] : [] }
+      const allAtts = [...existingAtts, ...urls]
+      await apiClient.put("/api/tasks", {
+        id: task.id,
+        attachments: JSON.stringify(allAtts),
+      })
+      setTask({ ...task, attachments: JSON.stringify(allAtts) as unknown as string[] })
+      attachmentPreviews.forEach((p) => URL.revokeObjectURL(p.url))
+      setAttachmentPreviews([])
+      toast.success(`${urls.length} bukti berhasil diupload`)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal upload bukti")
+    } finally {
+      setUploadingAttachment(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -303,12 +354,21 @@ export default function TaskDetailPage() {
               <CardTitle className="text-base">Lampiran</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {atts.map((file, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">
-                    {file}
-                  </Badge>
-                ))}
+              <div className="flex flex-wrap gap-3">
+                {atts.map((url, i) => {
+                  const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(url)
+                  return isImage ? (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`Lampiran ${i + 1}`} className="size-20 rounded-xl object-cover border border-border" />
+                    </a>
+                  ) : (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-primary hover:bg-muted/50">
+                      <FileImage className="size-4" />
+                      Lampiran {i + 1}
+                    </a>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
@@ -395,9 +455,70 @@ export default function TaskDetailPage() {
         )}
         {task.status === "in_progress" && (
           <>
-            <Button className="w-full" size="lg" variant="outline">
-              <Camera className="size-4" />
-              Upload Bukti
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              multiple
+              onChange={handleAttachmentSelect}
+              className="hidden"
+            />
+            {attachmentPreviews.length > 0 && (
+              <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 p-4">
+                <p className="text-sm font-semibold text-foreground">Pratinjau Bukti ({attachmentPreviews.length})</p>
+                <div className="flex flex-wrap gap-2">
+                  {attachmentPreviews.map((preview, i) => {
+                    const isImage = preview.file.type.startsWith("image/")
+                    return (
+                      <div key={i} className="relative">
+                        {isImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={preview.url} alt={`Preview ${i + 1}`} className="size-20 rounded-xl object-cover border border-border" />
+                        ) : (
+                          <div className="flex size-20 flex-col items-center justify-center rounded-xl border border-border bg-background gap-1">
+                            <FileImage className="size-5 text-muted-foreground" />
+                            <span className="text-[9px] text-muted-foreground">PDF</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => removeAttachmentPreview(i)}
+                          className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold shadow-sm"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setAttachmentPreviews([])} disabled={uploadingAttachment}>
+                    Batal
+                  </Button>
+                  <Button size="sm" className="flex-1" onClick={confirmAttachmentUpload} disabled={uploadingAttachment}>
+                    {uploadingAttachment ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Mengupload...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="size-4" />
+                        Upload {attachmentPreviews.length} File
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+            <Button
+              className="w-full"
+              size="lg"
+              variant="outline"
+              onClick={() => attachmentInputRef.current?.click()}
+              disabled={uploadingAttachment || attachmentPreviews.length > 0}
+            >
+              {uploadingAttachment ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+              {uploadingAttachment ? "Mengupload..." : "Upload Bukti"}
             </Button>
             <Button
               className="w-full"

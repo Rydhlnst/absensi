@@ -71,25 +71,25 @@ export default function TestExportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="bg-background">
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Test Export PDF & Excel</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Test Export PDF & Excel</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Halaman ini untuk menguji apakah fungsi export PDF dan Excel berjalan dengan baik.
           </p>
         </div>
 
-        <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-6 space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">Preview Data</h2>
+        <div className="rounded-2xl bg-card shadow-sm border border-border p-6 space-y-4">
+          <h2 className="text-lg font-bold text-foreground">Preview Data</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200">
+                <tr className="border-b border-border">
                   {columns.map((col) => (
                     <th
                       key={col.dataKey}
-                      className={`py-2 px-3 font-semibold text-gray-600 ${
+                      className={`py-2 px-3 font-semibold text-muted-foreground ${
                         col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"
                       }`}
                     >
@@ -100,7 +100,7 @@ export default function TestExportPage() {
               </thead>
               <tbody>
                 {sampleData.map((row) => (
-                  <tr key={row.no} className="border-b border-gray-100">
+                  <tr key={row.no} className="border-b border-border/50">
                     <td className="py-2 px-3 text-center">{row.no}</td>
                     <td className="py-2 px-3 font-medium">{row.nama}</td>
                     <td className="py-2 px-3 text-center">{row.tanggal}</td>
@@ -127,27 +127,27 @@ export default function TestExportPage() {
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={handlePDF}
-            className="flex items-center justify-center gap-3 rounded-2xl bg-white border border-gray-200 p-6 shadow-sm hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-center gap-3 rounded-2xl bg-card border border-border p-6 shadow-sm hover:bg-muted/50 transition-colors"
           >
             <div className="flex size-12 items-center justify-center rounded-xl bg-red-100">
               <FileText className="size-6 text-red-600" />
             </div>
             <div className="text-left">
-              <p className="text-base font-bold text-gray-900">Download PDF</p>
-              <p className="text-xs text-gray-500">Laporan dalam format PDF</p>
+              <p className="text-base font-bold text-foreground">Download PDF</p>
+              <p className="text-xs text-muted-foreground">Laporan dalam format PDF</p>
             </div>
           </button>
 
           <button
             onClick={handleExcel}
-            className="flex items-center justify-center gap-3 rounded-2xl bg-white border border-gray-200 p-6 shadow-sm hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-center gap-3 rounded-2xl bg-card border border-border p-6 shadow-sm hover:bg-muted/50 transition-colors"
           >
             <div className="flex size-12 items-center justify-center rounded-xl bg-green-100">
               <Table className="size-6 text-green-600" />
             </div>
             <div className="text-left">
-              <p className="text-base font-bold text-gray-900">Download Excel</p>
-              <p className="text-xs text-gray-500">Laporan dalam format XLSX</p>
+              <p className="text-base font-bold text-foreground">Download Excel</p>
+              <p className="text-xs text-muted-foreground">Laporan dalam format XLSX</p>
             </div>
           </button>
         </div>

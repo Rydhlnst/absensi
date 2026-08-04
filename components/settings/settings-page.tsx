@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useTransition } from "react"
 import { Loader2, Upload, MapPin, Building2, Trash2, Plus, Star, Crosshair, Shield } from "lucide-react"
 import { apiClient } from "@/lib/api"
+import { uploadToR2 } from "@/lib/upload"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,7 +23,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
       type="button"
       onClick={() => !disabled && onChange(!checked)}
       className={`relative inline-flex h-7 w-12 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-        checked ? "bg-primary" : "bg-gray-300"
+        checked ? "bg-primary" : "bg-muted"
       } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
     >
       <span
@@ -116,6 +117,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [logoUploading, setLogoUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadData = useCallback(async () => {
@@ -161,20 +163,21 @@ export default function SettingsPage({ role }: SettingsPageProps) {
     })
   }, [loadData, startTransition])
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!canEdit) { toast.error("Hanya Super Admin yang dapat mengubah logo"); return }
     const file = event.target.files?.[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Ukuran logo maksimal 2MB")
-      return
-    }
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setCompanyLogo(reader.result as string)
+    setLogoUploading(true)
+    try {
+      const publicUrl = await uploadToR2(file, "logos")
+      setCompanyLogo(publicUrl)
       toast.success("Logo berhasil diupload (klik Simpan untuk menyimpan)")
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal upload logo")
+    } finally {
+      setLogoUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
     }
-    reader.readAsDataURL(file)
   }
 
   const handleGetCurrentLocation = () => {
@@ -337,8 +340,8 @@ export default function SettingsPage({ role }: SettingsPageProps) {
     )
   }
 
-  const fieldClass = `w-full rounded-xl border bg-white px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${canEdit ? "border-gray-200" : "border-gray-100 bg-gray-50 cursor-not-allowed"}`
-  const labelClass = "text-sm font-medium text-gray-700 mb-1.5 block"
+  const fieldClass = `w-full rounded-xl border bg-card px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${canEdit ? "border-border" : "border-border/50 bg-background cursor-not-allowed"}`
+  const labelClass = "text-sm font-medium text-foreground mb-1.5 block"
 
   if (loading) {
     return (
@@ -356,17 +359,17 @@ export default function SettingsPage({ role }: SettingsPageProps) {
       </div>
 
       {isAdmin && (
-        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3 flex items-center gap-3">
-          <Shield className="size-5 text-amber-600 shrink-0" />
+        <div className="rounded-2xl bg-warning/10 border border-warning/30 p-3 flex items-center gap-3">
+          <Shield className="size-5 text-warning shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-amber-800">Mode Admin (Read-Only)</p>
-            <p className="text-xs text-amber-600">Anda hanya dapat melihat pengaturan. Hubungi Super Admin untuk perubahan.</p>
+            <p className="text-sm font-semibold text-warning">Mode Admin (Read-Only)</p>
+            <p className="text-xs text-warning">Anda hanya dapat melihat pengaturan. Hubungi Super Admin untuk perubahan.</p>
           </div>
         </div>
       )}
 
       {/* Company Identity */}
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-4">
+      <div className="rounded-2xl bg-card shadow-sm border border-border p-4 space-y-4">
         <h2 className="text-base font-bold text-primary flex items-center gap-2">
           <Building2 className="size-4" />
           Identitas Perusahaan
@@ -379,11 +382,11 @@ export default function SettingsPage({ role }: SettingsPageProps) {
               <img
                 src={companyLogo}
                 alt="Logo"
-                className="size-20 rounded-xl object-contain border border-gray-200 bg-white p-1"
+                className="size-20 rounded-xl object-contain border border-border bg-white p-1"
               />
             ) : (
-              <div className="size-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
-                <Building2 className="size-6 text-gray-400" />
+              <div className="size-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-background">
+                <Building2 className="size-6 text-muted-foreground" />
               </div>
             )}
           </div>
@@ -397,11 +400,12 @@ export default function SettingsPage({ role }: SettingsPageProps) {
             />
             <button
               type="button"
-              onClick={() => canEdit ? fileInputRef.current?.click() : toast.error("Hanya Super Admin yang dapat mengubah logo")}
-              className={`w-full flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${canEdit ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50" : "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed"}`}
+              onClick={() => canEdit && !logoUploading ? fileInputRef.current?.click() : undefined}
+              disabled={!canEdit || logoUploading}
+              className={`w-full flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${canEdit && !logoUploading ? "border-border bg-white text-foreground hover:bg-muted/50" : "border-border/50 bg-background text-muted-foreground cursor-not-allowed"}`}
             >
-              <Upload className="size-4" />
-              {companyLogo ? "Ganti Logo" : "Upload Logo"}
+              {logoUploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              {logoUploading ? "Mengupload..." : companyLogo ? "Ganti Logo" : "Upload Logo"}
             </button>
             {companyLogo && canEdit && (
               <button
@@ -413,7 +417,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
                 Hapus Logo
               </button>
             )}
-            <p className="text-[10px] text-gray-500 text-center">Maks. 2MB (PNG, JPG, SVG)</p>
+            <p className="text-[10px] text-muted-foreground text-center">Maks. 5MB (PNG, JPG, WebP, GIF)</p>
           </div>
         </div>
 
@@ -468,7 +472,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
       </div>
 
       {/* Office Coordinates & Geofence */}
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+      <div className="rounded-2xl bg-card shadow-sm border border-border p-4 space-y-3">
         <h2 className="text-base font-bold text-primary flex items-center gap-2">
           <MapPin className="size-4" />
           Lokasi Kantor & Geofence
@@ -504,7 +508,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
         <button
           type="button"
           onClick={handleGetCurrentLocation}
-          className={`w-full flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${canEdit ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" : "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed"}`}
+          className={`w-full flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${canEdit ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" : "border-border/50 bg-background text-muted-foreground cursor-not-allowed"}`}
         >
           <MapPin className="size-4" />
           Deteksi Lokasi Saya
@@ -520,14 +524,14 @@ export default function SettingsPage({ role }: SettingsPageProps) {
             placeholder="100"
             readOnly={!canEdit}
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Karyawan hanya bisa absen dalam radius ini dari titik koordinat
           </p>
         </div>
       </div>
 
       {/* Office Branches */}
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+      <div className="rounded-2xl bg-card shadow-sm border border-border p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-primary flex items-center gap-2">
             <Building2 className="size-4" />
@@ -546,10 +550,10 @@ export default function SettingsPage({ role }: SettingsPageProps) {
         </div>
 
         {branches.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center">
-            <Building2 className="size-6 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">Belum ada kantor cabang</p>
-            <p className="text-xs text-gray-400 mt-1">
+          <div className="rounded-xl border border-dashed border-border p-6 text-center">
+            <Building2 className="size-6 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Belum ada kantor cabang</p>
+            <p className="text-xs text-muted-foreground mt-1">
               {canEdit ? "Tambahkan kantor cabang untuk lokasi tambahan" : "Belum ada kantor cabang yang dikonfigurasi"}
             </p>
           </div>
@@ -558,33 +562,33 @@ export default function SettingsPage({ role }: SettingsPageProps) {
             {branches.map((branch) => (
               <div
                 key={branch.id}
-                className="rounded-xl border border-gray-200 p-3 flex items-start gap-3 bg-white"
+                className="rounded-xl border border-border p-3 flex items-start gap-3 bg-card"
               >
                 <div className={`shrink-0 size-10 rounded-lg flex items-center justify-center ${
-                  branch.isMain ? "bg-amber-100" : "bg-gray-100"
+                  branch.isMain ? "bg-warning/20" : "bg-muted"
                 }`}>
                   {branch.isMain ? (
-                    <Star className="size-5 text-amber-600 fill-amber-500" />
+                    <Star className="size-5 text-warning fill-warning" />
                   ) : (
-                    <Building2 className="size-5 text-gray-500" />
+                    <Building2 className="size-5 text-muted-foreground" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-sm truncate">{branch.name}</p>
                     {branch.isMain && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">
+                      <span className="px-1.5 py-0.5 rounded-full bg-warning/20 text-warning text-[10px] font-bold">
                         PUSAT
                       </span>
                     )}
                     {!branch.isActive && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold">
+                      <span className="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold">
                         OFF
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 truncate">{branch.address}</p>
-                  <p className="text-[10px] text-gray-400 font-mono mt-0.5">
+                  <p className="text-xs text-muted-foreground truncate">{branch.address}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                     {branch.latitude.toFixed(4)}, {branch.longitude.toFixed(4)} • Radius {branch.radius}m
                   </p>
                 </div>
@@ -593,7 +597,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
                     <button
                       type="button"
                       onClick={() => openBranchDialog(branch)}
-                      className="size-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                      className="size-8 rounded-lg border border-border bg-white flex items-center justify-center text-muted-foreground hover:bg-muted/50"
                     >
                       <Upload className="size-3.5" />
                     </button>
@@ -613,7 +617,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
       </div>
 
       {/* Work Schedule */}
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+      <div className="rounded-2xl bg-card shadow-sm border border-border p-4 space-y-3">
         <h2 className="text-base font-bold text-primary">Jadwal Kerja</h2>
 
         <div>
@@ -640,7 +644,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
             {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
-        <div className="border-t border-gray-200 pt-3">
+        <div className="border-t border-border pt-3">
           <label className={labelClass}>Toleransi Keterlambatan Jam Masuk (Menit)</label>
           <input type="number" value={toleranceIn} onChange={(e) => canEdit && setToleranceIn(e.target.value)} className={fieldClass} readOnly={!canEdit} />
         </div>
@@ -654,10 +658,10 @@ export default function SettingsPage({ role }: SettingsPageProps) {
       <div>
         <h2 className="text-base font-bold text-primary mb-2">Keamanan Absensi &amp; Kontrol Gaji</h2>
         <div className="space-y-3">
-          <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 flex items-start justify-between gap-3">
+          <div className="rounded-2xl bg-card shadow-sm border border-border p-4 flex items-start justify-between gap-3">
             <div className="flex-1">
               <p className="text-sm font-extrabold text-primary uppercase tracking-wide">Pengikatan Perangkat (Device Binding)</p>
-              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                 Jika aktif, akun karyawan akan otomatis diikat ke perangkat HP pertama yang digunakan untuk absensi. Karyawan tidak bisa absen menggunakan perangkat HP lain kecuali di-reset oleh Admin.
               </p>
             </div>
@@ -665,10 +669,10 @@ export default function SettingsPage({ role }: SettingsPageProps) {
               <Toggle checked={deviceBinding} onChange={setDeviceBinding} disabled={!canEdit} />
             </div>
           </div>
-          <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 flex items-start justify-between gap-3">
+          <div className="rounded-2xl bg-card shadow-sm border border-border p-4 flex items-start justify-between gap-3">
             <div className="flex-1">
               <p className="text-sm font-extrabold text-primary uppercase tracking-wide">Pembekuan Gaji Berbasis Tugas (Task Salary Freeze)</p>
-              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                 Jika aktif, jam kerja &amp; gaji karyawan otomatis dibekukan (paused) jika masih ada tugas namun karyawan berada di geofence kantor. Jika dimatikan, jam kerja &amp; gaji berjalan normal tanpa dibekukan.
               </p>
             </div>
@@ -682,7 +686,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
       {/* Points Configuration */}
       <div>
         <h2 className="text-base font-bold text-primary mb-2">Poin Hadiah Per Kategori Tugas</h2>
-        <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 space-y-3">
+        <div className="rounded-2xl bg-card shadow-sm border border-border p-4 space-y-3">
           <div>
             <label className={labelClass}>Poin Pemasangan</label>
             <input type="number" value={poinPemasangan} onChange={(e) => canEdit && setPoinPemasangan(e.target.value)} className={fieldClass} readOnly={!canEdit} />
@@ -729,7 +733,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
                 type="text"
                 value={branchForm.name}
                 onChange={(e) => setBranchForm((f) => ({ ...f, name: e.target.value }))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder="Kantor Pusat Jakarta"
               />
             </div>
@@ -740,7 +744,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
                 type="text"
                 value={branchForm.address}
                 onChange={(e) => setBranchForm((f) => ({ ...f, address: e.target.value }))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder="Jl. Sudirman No. 1, Jakarta"
               />
             </div>
@@ -753,7 +757,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
                   step="any"
                   value={branchForm.latitude}
                   onChange={(e) => setBranchForm((f) => ({ ...f, latitude: e.target.value }))}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   placeholder="-6.2088"
                 />
               </div>
@@ -764,7 +768,7 @@ export default function SettingsPage({ role }: SettingsPageProps) {
                   step="any"
                   value={branchForm.longitude}
                   onChange={(e) => setBranchForm((f) => ({ ...f, longitude: e.target.value }))}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   placeholder="106.8456"
                 />
               </div>
@@ -784,19 +788,19 @@ export default function SettingsPage({ role }: SettingsPageProps) {
             </button>
 
             {branchForm.latitude && branchForm.longitude && (
-              <div className="rounded-xl overflow-hidden border border-gray-200">
+              <div className="rounded-xl overflow-hidden border border-border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=600&height=300&center=lonlat:${branchForm.longitude},${branchForm.latitude}&zoom=15&marker=lonlat:${branchForm.longitude},${branchForm.latitude};color:%23ff0000;size:medium&apiKey=demo`}
                   alt="Map preview"
-                  className="w-full h-40 object-cover bg-gray-100"
+                  className="w-full h-40 object-cover bg-muted"
                   onError={(e) => {
                     e.currentTarget.style.display = "none"
                     e.currentTarget.parentElement!.innerHTML = `
                       <div class="w-full h-40 bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
                         <div class="text-center">
-                          <svg class="size-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                          <p class="text-xs text-gray-500">${branchForm.latitude}, ${branchForm.longitude}</p>
+                          <svg class="size-8 mx-auto text-muted-foreground mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                          <p class="text-xs text-muted-foreground">${branchForm.latitude}, ${branchForm.longitude}</p>
                         </div>
                       </div>
                     `
@@ -811,15 +815,15 @@ export default function SettingsPage({ role }: SettingsPageProps) {
                 type="number"
                 value={branchForm.radius}
                 onChange={(e) => setBranchForm((f) => ({ ...f, radius: e.target.value }))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder="100"
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-gray-200 p-3">
+            <div className="flex items-center justify-between rounded-xl border border-border p-3">
               <div>
                 <p className="text-sm font-semibold">Jadikan Kantor Pusat</p>
-                <p className="text-xs text-gray-500">Cabang utama sebagai default</p>
+                <p className="text-xs text-muted-foreground">Cabang utama sebagai default</p>
               </div>
               <input
                 type="checkbox"
@@ -829,10 +833,10 @@ export default function SettingsPage({ role }: SettingsPageProps) {
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-gray-200 p-3">
+            <div className="flex items-center justify-between rounded-xl border border-border p-3">
               <div>
                 <p className="text-sm font-semibold">Status Aktif</p>
-                <p className="text-xs text-gray-500">Cabang dapat digunakan untuk absensi</p>
+                <p className="text-xs text-muted-foreground">Cabang dapat digunakan untuk absensi</p>
               </div>
               <input
                 type="checkbox"

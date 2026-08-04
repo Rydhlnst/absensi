@@ -44,12 +44,12 @@ const rewardTypeLabel: Record<RewardType, string> = {
 const rewardTypeColor: Record<RewardType, string> = {
   earned: "text-green-600",
   redeemed: "text-red-500",
-  expired: "text-gray-400",
-  adjusted: "text-amber-600",
+  expired: "text-muted-foreground",
+  adjusted: "text-warning",
 }
 
 export default function EmployeeRewardsPage() {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending: sessionPending } = authClient.useSession()
   const [activeTab, setActiveTab] = useState<"leaderboard" | "history">("leaderboard")
   const [employees, setEmployees] = useState<Employee[]>([])
   const [myRewards, setMyRewards] = useState<RewardEntry[]>([])
@@ -58,15 +58,15 @@ export default function EmployeeRewardsPage() {
   const currentUserId = session?.user?.id || ""
 
   useEffect(() => {
+    if (sessionPending) return
+    if (!currentUserId) { setLoading(false); return }
     let cancelled = false
     async function load() {
       try {
         setLoading(true)
         const [emp, rewards] = await Promise.all([
           apiClient.get<Employee[]>("/api/employees", { role: "employee" }),
-          currentUserId
-            ? apiClient.get<RewardEntry[]>("/api/rewards", { employeeId: currentUserId })
-            : Promise.resolve([] as RewardEntry[]),
+          apiClient.get<RewardEntry[]>("/api/rewards", { employeeId: currentUserId }),
         ])
         if (!cancelled) {
           setEmployees(emp)
@@ -82,7 +82,7 @@ export default function EmployeeRewardsPage() {
     return () => {
       cancelled = true
     }
-  }, [currentUserId])
+  }, [currentUserId, sessionPending])
 
   const leaderboard = useMemo(() => {
     return [...employees]
@@ -97,9 +97,9 @@ export default function EmployeeRewardsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="p-4 space-y-4">
-        <div className="rounded-2xl p-5 flex items-center justify-between shadow-sm" style={{ backgroundColor: "#1e3a8a" }}>
+    <>
+      <div className="space-y-4">
+        <div className="rounded-2xl p-5 flex items-center justify-between shadow-sm bg-primary">
           <div>
             <p className="text-sm text-white/80">Total Poin Anda</p>
             <p className="text-3xl font-bold text-white mt-1">
@@ -115,7 +115,7 @@ export default function EmployeeRewardsPage() {
             className={`flex-1 rounded-xl py-3 text-sm font-bold transition-colors ${
               activeTab === "leaderboard"
                 ? "border-2 border-primary text-primary bg-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-500"
+                : "bg-white border border-border text-muted-foreground"
             }`}
           >
             Papan Peringkat
@@ -125,7 +125,7 @@ export default function EmployeeRewardsPage() {
             className={`flex-1 rounded-xl py-3 text-sm font-bold transition-colors ${
               activeTab === "history"
                 ? "border-2 border-primary text-primary bg-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-500"
+                : "bg-white border border-border text-muted-foreground"
             }`}
           >
             Riwayat Poin
@@ -134,10 +134,10 @@ export default function EmployeeRewardsPage() {
 
         {activeTab === "leaderboard" ? (
           <div>
-            <h2 className="text-base font-bold text-gray-900 mb-3">Papan Peringkat Teknisi</h2>
-            <div className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
+            <h2 className="text-base font-bold text-foreground mb-3">Papan Peringkat Teknisi</h2>
+            <div className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden">
               {leaderboard.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-sm">Belum ada data teknisi</div>
+                <div className="p-8 text-center text-muted-foreground text-sm">Belum ada data teknisi</div>
               ) : (
                 leaderboard.map((emp, idx) => {
                   const rank = idx + 1
@@ -147,7 +147,7 @@ export default function EmployeeRewardsPage() {
                   return (
                     <div
                       key={emp.id}
-                      className={`flex items-center gap-3 p-3.5 border-b border-gray-100 last:border-0 ${
+                      className={`flex items-center gap-3 p-3.5 border-b border-border/50 last:border-0 ${
                         isMe ? "bg-primary/5" : ""
                       }`}
                     >
@@ -155,7 +155,7 @@ export default function EmployeeRewardsPage() {
                         {isFirst ? (
                           <Trophy className="size-6 text-yellow-500" />
                         ) : (
-                          <span className="text-sm font-bold text-gray-400">#{rank}</span>
+                          <span className="text-sm font-bold text-muted-foreground">#{rank}</span>
                         )}
                       </div>
                       <Avatar size="default">
@@ -165,12 +165,12 @@ export default function EmployeeRewardsPage() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-bold truncate ${isMe ? "text-primary" : "text-gray-900"}`}>
+                        <p className={`text-sm font-bold truncate ${isMe ? "text-primary" : "text-foreground"}`}>
                           {emp.name.toUpperCase()}
                         </p>
-                        <p className="text-xs text-gray-400 truncate">{emp.position || "Teknisi"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{emp.position || "Teknisi"}</p>
                       </div>
-                      <span className={`text-sm font-bold shrink-0 ${isMe ? "text-primary" : "text-gray-700"}`}>
+                      <span className={`text-sm font-bold shrink-0 ${isMe ? "text-primary" : "text-foreground"}`}>
                         {emp.rewardPoints} Poin
                       </span>
                     </div>
@@ -181,18 +181,18 @@ export default function EmployeeRewardsPage() {
           </div>
         ) : (
           <div>
-            <h2 className="text-base font-bold text-gray-900 mb-3">Riwayat Poin Saya</h2>
+            <h2 className="text-base font-bold text-foreground mb-3">Riwayat Poin Saya</h2>
             {myRewards.length === 0 ? (
-              <div className="rounded-2xl bg-white p-8 text-center text-gray-400 text-sm shadow-sm border border-gray-200">
+              <div className="rounded-2xl bg-card p-8 text-center text-muted-foreground text-sm shadow-sm border border-border">
                 Belum ada riwayat poin
               </div>
             ) : (
               <div className="space-y-2">
                 {myRewards.map((r) => (
-                  <div key={r.id} className="rounded-2xl bg-white shadow-sm border border-gray-200 p-4 flex items-center justify-between gap-3">
+                  <div key={r.id} className="rounded-2xl bg-card shadow-sm border border-border p-4 flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{r.description || "Transaksi poin"}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-sm font-semibold text-foreground truncate">{r.description || "Transaksi poin"}</p>
+                      <p className="text-xs text-muted-foreground">
                         {format(new Date(r.createdAt), "dd MMM yyyy, HH:mm", { locale: id })}
                       </p>
                     </div>
@@ -206,6 +206,6 @@ export default function EmployeeRewardsPage() {
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }

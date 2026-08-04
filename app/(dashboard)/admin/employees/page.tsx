@@ -264,7 +264,7 @@ export default function AdminEmployeesPage() {
 
       <div className="space-y-3">
         {employees.length === 0 ? (
-          <div className="rounded-2xl bg-white p-8 text-center text-gray-400 text-sm shadow-sm border border-gray-200">
+          <div className="rounded-2xl bg-card p-8 text-center text-muted-foreground text-sm shadow-sm border border-border">
             Belum ada data teknisi
           </div>
         ) : (
@@ -272,7 +272,7 @@ export default function AdminEmployeesPage() {
             const device = devices.find((d) => d.userId === emp.id && d.isActive)
 
             return (
-              <div key={emp.id} className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
+              <div key={emp.id} className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden">
                 <div className="p-4 flex gap-4">
                   <div className="shrink-0">
                     <Avatar className="!size-16">
@@ -284,43 +284,43 @@ export default function AdminEmployeesPage() {
                   </div>
 
                   <div className="flex-1 min-w-0 space-y-2">
-                    <p className="text-base font-bold text-gray-900 truncate">{emp.name}</p>
+                    <p className="text-base font-bold text-foreground truncate">{emp.name}</p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Tarif / Jam</p>
-                        <p className="text-sm font-bold text-gray-900">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Tarif / Jam</p>
+                        <p className="text-sm font-bold text-foreground">
                           {emp.hourlyRate > 0 ? `Rp ${emp.hourlyRate.toLocaleString("id-ID")}` : "Rp -"}
                         </p>
                       </div>
 
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Total Poin</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Total Poin</p>
                         <div className="flex items-center gap-1.5">
                           <Award className="size-4 text-yellow-500 shrink-0" />
-                          <span className="text-sm font-bold text-gray-900">{emp.rewardPoints} Poin</span>
+                          <span className="text-sm font-bold text-foreground">{emp.rewardPoints} Poin</span>
                           <button
                             onClick={() => handlePointsAdjust(emp.id, emp.rewardPoints, -10)}
-                            className="flex size-5 items-center justify-center rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-xs font-bold"
+                            className="flex size-5 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted text-xs font-bold"
                           >−</button>
                           <button
                             onClick={() => handlePointsAdjust(emp.id, emp.rewardPoints, 10)}
-                            className="flex size-5 items-center justify-center rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-xs font-bold"
+                            className="flex size-5 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted text-xs font-bold"
                           >+</button>
                         </div>
                       </div>
 
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">No. Telp / Wa</p>
-                        <p className="text-sm font-bold text-gray-900">{emp.phone || "-"}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">No. Telp / Wa</p>
+                        <p className="text-sm font-bold text-foreground">{emp.phone || "-"}</p>
                       </div>
 
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Device ID Terikat</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Device ID Terikat</p>
                         {device ? (
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="size-1.5 rounded-full bg-green-500 shrink-0" />
-                            <span className="text-xs font-mono text-gray-700 truncate">{device.deviceId}</span>
+                            <span className="text-xs font-mono text-foreground truncate">{device.deviceId}</span>
                             <button
                               onClick={() => handleResetDevice(emp.id, emp.name)}
                               className="text-xs text-red-500 font-medium hover:underline ml-auto"
@@ -329,17 +329,17 @@ export default function AdminEmployeesPage() {
                             </button>
                           </div>
                         ) : (
-                          <span className="text-xs text-gray-400">Belum terikat</span>
+                          <span className="text-xs text-muted-foreground">Belum terikat</span>
                         )}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 border-t border-gray-200">
+                <div className="grid grid-cols-2 border-t border-border">
                   <button
                     onClick={() => openEditDialog(emp)}
-                    className="flex items-center justify-center gap-2 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 border-r border-gray-200"
+                    className="flex items-center justify-center gap-2 py-3 text-sm font-semibold text-foreground hover:bg-muted/50 border-r border-border"
                   >
                     <Pencil className="size-4" />
                     Ubah
@@ -371,7 +371,7 @@ export default function AdminEmployeesPage() {
             <div className="space-y-2">
               <Label>Nama Lengkap</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input placeholder="Masukkan nama" className="pl-10" value={form.name}
                   onChange={(e) => handleFormChange("name", e.target.value)} disabled={saving} required />
               </div>
@@ -379,7 +379,7 @@ export default function AdminEmployeesPage() {
             <div className="space-y-2">
               <Label>Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input type="email" placeholder="email@perusahaan.com" className="pl-10" value={form.email}
                   onChange={(e) => handleFormChange("email", e.target.value)} disabled={saving} required />
               </div>
@@ -387,7 +387,7 @@ export default function AdminEmployeesPage() {
             <div className="space-y-2">
               <Label>No. Telepon</Label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input type="tel" placeholder="+6281234567890" className="pl-10" value={form.phone}
                   onChange={(e) => handleFormChange("phone", e.target.value)} disabled={saving} required />
               </div>
@@ -396,7 +396,7 @@ export default function AdminEmployeesPage() {
               <div className="space-y-2">
                 <Label>Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input type="password" placeholder="Minimal 8 karakter" className="pl-10" value={form.password}
                     onChange={(e) => handleFormChange("password", e.target.value)} disabled={saving} required />
                 </div>
@@ -405,7 +405,7 @@ export default function AdminEmployeesPage() {
             <div className="space-y-2">
               <Label>Departemen</Label>
               <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input placeholder="Teknisi Lapangan" className="pl-10" value={form.department}
                   onChange={(e) => handleFormChange("department", e.target.value)} disabled={saving} required />
               </div>
@@ -413,7 +413,7 @@ export default function AdminEmployeesPage() {
             <div className="space-y-2">
               <Label>Posisi</Label>
               <div className="relative">
-                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input placeholder="Teknisi / Driver / Admin" className="pl-10" value={form.position}
                   onChange={(e) => handleFormChange("position", e.target.value)} disabled={saving} required />
               </div>
@@ -421,7 +421,7 @@ export default function AdminEmployeesPage() {
             <div className="space-y-2">
               <Label>Tarif/Jam (Rp)</Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input type="number" placeholder="10000" className="pl-10" value={form.hourlyRate}
                   onChange={(e) => handleFormChange("hourlyRate", e.target.value)} disabled={saving} min={0} />
               </div>

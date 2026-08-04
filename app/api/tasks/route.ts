@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { task } from "@/lib/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { task, reward, user, timelineEvent, notification } from "@/lib/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
@@ -59,6 +59,33 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    // Create initial timeline event
+    if (newTask[0]) {
+      await db.insert(timelineEvent).values({
+        id: crypto.randomUUID(),
+        taskId: newTask[0].id,
+        status: "pending",
+        description: "Tugas dibuat",
+        timestamp: new Date(),
+        employeeId: body.assignedTo || null,
+        employeeName: null,
+      });
+    }
+
+    // Notify assigned employee
+    if (newTask[0] && body.assignedTo) {
+      await db.insert(notification).values({
+        id: crypto.randomUUID(),
+        userId: body.assignedTo,
+        title: "Tugas Baru",
+        message: `Anda mendapat tugas baru: ${body.title}`,
+        type: "task",
+        isRead: false,
+        createdAt: new Date(),
+        link: "/employee/tasks",
+      });
+    }
+
     return NextResponse.json(newTask[0], { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
@@ -74,6 +101,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Task id is required" }, { status: 400 });
     }
 
+    const existing = await db.select().from(task).where(eq(task.id, id)).limit(1);
+    const wasCompleted = existing[0]?.status === "completed";
+
     const updated = await db
       .update(task)
       .set({ ...updates, updatedAt: new Date() })
@@ -84,7 +114,57 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    return NextResponse.json(updated[0]);
+    const updatedTask = updated[0];
+
+    // Create timeline event when status changes
+    if (existing.length > 0 && updates.status && updates.status !== existing[0].status) {
+      const statusLabels: Record<string, string> = {
+        pending: "Menunggu",
+        in_progress: "Dikerjakan",
+        completed: "Selesai",
+        cancelled: "Dibatalkan",
+        on_hold: "Ditunda",
+      };
+      await db.insert(timelineEvent).values({
+        id: crypto.randomUUID(),
+        taskId: updatedTask.id,
+        status: updatedTask.status,
+        description: `Status diubah ke "${statusLabels[updatedTask.status] || updatedTask.status}"`,
+        timestamp: new Date(),
+        employeeId: updatedTask.assignedTo || null,
+        employeeName: null,
+      });
+    }
+
+    if (!wasCompleted && updatedTask.status === "completed" && updatedTask.assignedTo && updatedTask.rewardPoints && updatedTask.rewardPoints > 0) {
+      await db.insert(reward).values({
+        id: crypto.randomUUID(),
+        employeeId: updatedTask.assignedTo,
+        taskId: updatedTask.id,
+        points: updatedTask.rewardPoints,
+        type: "task_completion",
+        description: `Menyelesaikan tugas: ${updatedTask.title}`,
+        createdAt: new Date(),
+      });
+      await db.update(user).set({
+        rewardPoints: sql`${user.rewardPoints} + ${updatedTask.rewardPoints}`,
+        updatedAt: new Date(),
+      }).where(eq(user.id, updatedTask.assignedTo));
+
+      // Notify reward earned
+      await db.insert(notification).values({
+        id: crypto.randomUUID(),
+        userId: updatedTask.assignedTo,
+        title: "Poin Reward Diperoleh!",
+        message: `Anda mendapat ${updatedTask.rewardPoints} poin dari tugas: ${updatedTask.title}`,
+        type: "reward",
+        isRead: false,
+        createdAt: new Date(),
+        link: "/employee/rewards",
+      });
+    }
+
+    return NextResponse.json(updatedTask);
   } catch {
     return NextResponse.json({ error: "Failed to update task" }, { status: 500 });
   }

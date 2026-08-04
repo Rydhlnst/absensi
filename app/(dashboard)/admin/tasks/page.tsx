@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { MapPin, Pencil, Eye, Trash2, Loader2, Plus, Phone, Home, FileText, Map } from "lucide-react"
+import { MapPin, Pencil, Eye, Trash2, Loader2, Plus, Phone, Home, FileText, Map, ClipboardList } from "lucide-react"
+import EmptyState from "@/components/empty-state"
 import {
   Dialog,
   DialogContent,
@@ -105,8 +106,8 @@ function TaskCard({
   const telUrl = `tel:${phoneNumber}`
 
   return (
-    <div className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden mb-3">
-      <div className="px-4 py-3 flex items-center justify-center gap-3 bg-gray-50 border-b border-gray-200">
+    <div className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden mb-3">
+      <div className="px-4 py-3 flex items-center justify-center gap-3 bg-muted/50 border-b border-border">
         <span className={`rounded-full px-4 py-1.5 text-sm font-bold tracking-wider ${catColor}`}>
           {categoryLabels[task.category]}
         </span>
@@ -115,9 +116,9 @@ function TaskCard({
         </span>
       </div>
 
-      <div className="px-4 py-1.5 text-center text-xs text-gray-500 border-b border-gray-100">
+      <div className="px-4 py-1.5 text-center text-xs text-muted-foreground border-b border-border/50">
         <p>
-          Pembuat Tugas: <span className="font-bold text-gray-700">{creatorName || "Admin"}</span>
+          Pembuat Tugas: <span className="font-bold text-foreground">{creatorName || "Admin"}</span>
         </p>
       </div>
 
@@ -126,15 +127,15 @@ function TaskCard({
           <div className="flex items-center gap-2 min-w-0">
             <MapPin className="size-4 text-red-500 shrink-0" />
             <p className="text-sm min-w-0">
-              <span className="font-semibold text-gray-900">Alamat:</span>{" "}
-              <span className="font-bold text-gray-900 truncate">{task.address}</span>
+              <span className="font-semibold text-foreground">Alamat:</span>{" "}
+              <span className="font-bold text-foreground truncate">{task.address}</span>
             </p>
           </div>
           <a
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
+            className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/50"
           >
             <span className="text-blue-500"><Map className="size-3.5 inline" /></span> Google Maps
           </a>
@@ -143,8 +144,8 @@ function TaskCard({
         <div className="flex items-start gap-2">
           <Home className="size-4 text-blue-500 shrink-0 mt-0.5" />
           <p className="text-sm">
-            <span className="font-semibold text-gray-900">Detail Alamat:</span>{" "}
-            <span className="text-gray-700">{task.addressDetail || "-"}</span>
+            <span className="font-semibold text-foreground">Detail Alamat:</span>{" "}
+            <span className="text-foreground">{task.addressDetail || "-"}</span>
           </p>
         </div>
 
@@ -153,8 +154,8 @@ function TaskCard({
             <div className="flex items-center gap-2 min-w-0">
               <Phone className="size-4 text-green-600 shrink-0" />
               <p className="text-sm">
-                <span className="font-semibold text-gray-900">Telp/WA:</span>{" "}
-                <span className="font-bold text-gray-900">{task.customerPhone}</span>
+                <span className="font-semibold text-foreground">Telp/WA:</span>{" "}
+                <span className="font-bold text-foreground">{task.customerPhone}</span>
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -177,25 +178,25 @@ function TaskCard({
         )}
 
         <div className="flex items-start gap-2">
-          <FileText className="size-4 text-amber-500 shrink-0 mt-0.5" />
+          <FileText className="size-4 text-warning shrink-0 mt-0.5" />
           <p className="text-sm">
-            <span className="font-semibold text-gray-900">Keterangan Tugas:</span>{" "}
-            <span className="text-gray-700">{task.description}</span>
+            <span className="font-semibold text-foreground">Keterangan Tugas:</span>{" "}
+            <span className="text-foreground">{task.description}</span>
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 border-t border-gray-200">
+      <div className="grid grid-cols-3 border-t border-border">
         <button
           onClick={() => toast.info(`Detail: ${task.title}`)}
-          className="flex items-center justify-center gap-1.5 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 border-r border-gray-200"
+          className="flex items-center justify-center gap-1.5 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/50 border-r border-border"
         >
           <Eye className="size-4" />
           Detail
         </button>
         <button
           onClick={() => onEdit(task)}
-          className="flex items-center justify-center gap-1.5 py-3 text-sm font-medium text-amber-600 hover:bg-amber-50 border-r border-gray-200"
+          className="flex items-center justify-center gap-1.5 py-3 text-sm font-medium text-warning hover:bg-warning/10 border-r border-border"
         >
           <Pencil className="size-4" />
           Edit
@@ -358,7 +359,7 @@ export default function AdminTasksPage() {
   }
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative">
       <div className="pb-24">
         <div className="flex gap-2 mb-4">
           <button
@@ -366,7 +367,7 @@ export default function AdminTasksPage() {
             className={`flex-1 rounded-xl py-3 text-sm font-bold transition-colors ${
               activeTab === "active"
                 ? "bg-primary text-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-600"
+                : "bg-card border border-border text-muted-foreground"
             }`}
           >
             Belum Selesai
@@ -376,7 +377,7 @@ export default function AdminTasksPage() {
             className={`flex-1 rounded-xl py-3 text-sm font-bold transition-colors ${
               activeTab === "done"
                 ? "bg-primary text-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-600"
+                : "bg-card border border-border text-muted-foreground"
             }`}
           >
             Selesai
@@ -384,9 +385,7 @@ export default function AdminTasksPage() {
         </div>
 
         {displayTasks.length === 0 ? (
-          <div className="rounded-2xl bg-white p-8 text-center text-gray-400 text-sm shadow-sm border border-gray-200">
-            Tidak ada tugas
-          </div>
+          <EmptyState icon={ClipboardList} title="Tidak ada tugas" description="Tidak ada tugas untuk filter ini" />
         ) : (
           displayTasks.map((task) => {
             const creator = employees.find((e) => e.id === task.assignedBy)
@@ -425,7 +424,7 @@ export default function AdminTasksPage() {
               <select
                 value={form.category}
                 onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as TaskCategory }))}
-                className="w-full mt-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full mt-1 rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {Object.entries(categoryLabels).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -471,7 +470,7 @@ export default function AdminTasksPage() {
               <select
                 value={form.assignedTo}
                 onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))}
-                className="w-full mt-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full mt-1 rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="">-- Pilih Teknisi --</option>
                 {technicians.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}

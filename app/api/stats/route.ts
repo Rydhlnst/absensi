@@ -79,6 +79,8 @@ export async function GET() {
       .select({
         employeeId: attendance.employeeId,
         workingDuration: attendance.workingDuration,
+        isFrozen: attendance.isFrozen,
+        frozenMinutes: attendance.frozenMinutes,
         salary: user.salary,
       })
       .from(attendance)
@@ -92,10 +94,12 @@ export async function GET() {
       );
 
     // Running salary = sum of (workingDuration / 60 / 8 / 22 * monthlySalary) per employee per day
+    // If frozen, workingDuration is 0 (frozen minutes tracked separately)
     const monthlySalary = monthAttendance.reduce((total, record) => {
       const empSalary = record.salary || 0;
       if (empSalary <= 0) return total;
-      const duration = record.workingDuration || 0;
+      // If frozen, use 0 duration (salary frozen)
+      const duration = record.isFrozen ? 0 : (record.workingDuration || 0);
       // Daily rate = salary / 22 days, Hourly rate = daily / 8 hours, Per minute = hourly / 60
       const perMinuteRate = empSalary / 22 / 8 / 60;
       return total + Math.round(duration * perMinuteRate);

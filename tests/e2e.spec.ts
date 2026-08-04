@@ -54,12 +54,12 @@ test.describe("2. Employee UI", () => {
 
   test("dashboard renders attendance card", async ({ page }) => {
     await expect(page.getByText(/kehadiran hari ini/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("BULAN INI")).toBeVisible();
+    await expect(page.getByText(/BULAN INI/i)).toBeVisible();
     await expect(
       page.getByText("Check In Sekarang")
         .or(page.getByText("Check Out Sekarang"))
         .or(page.getByText("sudah check out", { exact: false }))
-        .or(page.getByText(/Absen Masuk Ditutup/i))
+        .or(page.getByText(/Absen.*Ditutup/i))
     ).toBeVisible();
   });
 
@@ -71,7 +71,7 @@ test.describe("2. Employee UI", () => {
 
   test("attendance-history renders summary", async ({ page }) => {
     await page.goto(`${BASE_URL}/employee/attendance-history`);
-    await expect(page.getByRole("heading", { name: /Riwayat/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Riwayat & Gaji" })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Tipe Filter")).toBeVisible();
     await expect(page.getByText("Ringkasan Periode Ini")).toBeVisible();
   });
@@ -467,7 +467,7 @@ test.describe("11. Employee Attendance", () => {
       page.getByText("Check In Sekarang")
         .or(page.getByText("Check Out Sekarang"))
         .or(page.getByText("sudah check out", { exact: false }))
-        .or(page.getByText(/Absen Masuk Ditutup/i))
+        .or(page.getByText(/Absen.*Ditutup/i))
         .or(page.getByText(/Sudah Masuk/i))
     ).toBeVisible({ timeout: 15000 });
   });

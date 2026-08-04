@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { apiClient } from "@/lib/api"
 import { AdminTableSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
+import EmptyState from "@/components/empty-state"
 
 const ITEMS_PER_PAGE = 15
 
@@ -152,15 +153,13 @@ export default function SuperAdminTasksPage() {
         </CardHeader>
         <CardContent>
           {paginatedTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Tidak ada tugas ditemukan
-            </p>
+            <EmptyState icon={ClipboardList} title="Tidak ada tugas ditemukan" description="Tidak ada tugas yang cocok dengan pencarian Anda" />
           ) : (
             <div className="space-y-2">
               {paginatedTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="rounded-xl border border-gray-200 p-3 flex items-center gap-3"
+                  className="rounded-xl border border-border p-3 flex items-center gap-3"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">{task.title}</p>

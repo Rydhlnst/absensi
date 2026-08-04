@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { attendance } from "@/lib/schema";
+import { attendance, task, companySetting, officeBranch } from "@/lib/schema";
 import { eq, desc, and } from "drizzle-orm";
+import { checkBranchProximity } from "@/lib/geo";
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,6 +35,71 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const id = crypto.randomUUID();
 
+    // Check Task Salary Freeze conditions
+    let isFrozen = false;
+    let frozenMinutes = 0;
+
+    try {
+      const settings = await db.select().from(companySetting).limit(1);
+      const freezeEnabled = settings[0]?.taskSalaryFreeze;
+
+      if (freezeEnabled) {
+        // Check if employee has pending/in-progress tasks
+        const pendingTasks = await db
+          .select()
+          .from(task)
+          .where(
+            and(
+              eq(task.assignedTo, body.employeeId),
+              eq(task.status, "pending")
+            )
+          );
+
+        const inProgressTasks = await db
+          .select()
+          .from(task)
+          .where(
+            and(
+              eq(task.assignedTo, body.employeeId),
+              eq(task.status, "in_progress")
+            )
+          );
+
+        const hasActiveTasks = pendingTasks.length > 0 || inProgressTasks.length > 0;
+
+        if (hasActiveTasks && body.checkInLocation) {
+          // Check if employee is inside office geofence
+          try {
+            const location = JSON.parse(body.checkInLocation);
+            if (location.latitude && location.longitude) {
+              const branches = await db.select().from(officeBranch);
+              const branchCheck = checkBranchProximity(
+                location.latitude,
+                location.longitude,
+                branches.map((b) => ({
+                  name: b.name,
+                  latitude: b.latitude,
+                  longitude: b.longitude,
+                  radius: b.radius || 100,
+                  isActive: b.isActive ?? true,
+                }))
+              );
+
+              if (branchCheck.isWithinRadius) {
+                isFrozen = true;
+                // frozenMinutes will be set at check-out
+                frozenMinutes = 0;
+              }
+            }
+          } catch {
+            // Invalid location JSON, skip freeze
+          }
+        }
+      }
+    } catch {
+      // Settings fetch failed, skip freeze
+    }
+
     const record = await db
       .insert(attendance)
       .values({
@@ -47,6 +113,8 @@ export async function POST(request: NextRequest) {
         isLate: body.isLate || false,
         lateMinutes: body.lateMinutes || 0,
         notes: body.notes,
+        isFrozen,
+        frozenMinutes,
       })
       .returning();
 
@@ -65,7 +133,23 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Attendance id is required" }, { status: 400 });
     }
 
-    if (updates.checkOut) updates.checkOut = new Date(updates.checkOut);
+    if (updates.checkOut) {
+      updates.checkOut = new Date(updates.checkOut);
+      const existing = await db.select().from(attendance).where(eq(attendance.id, id)).limit(1);
+      if (existing[0]?.checkIn) {
+        const checkInMs = new Date(existing[0].checkIn).getTime();
+        const checkOutMs = (updates.checkOut as Date).getTime();
+        let workingDuration = Math.round((checkOutMs - checkInMs) / 60000);
+
+        // If frozen, set workingDuration to 0
+        if (existing[0].isFrozen) {
+          updates.frozenMinutes = workingDuration;
+          workingDuration = 0;
+        }
+
+        updates.workingDuration = workingDuration;
+      }
+    }
     if (updates.checkIn) updates.checkIn = new Date(updates.checkIn);
 
     const updated = await db

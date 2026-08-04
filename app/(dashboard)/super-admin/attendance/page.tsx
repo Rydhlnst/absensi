@@ -7,6 +7,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -23,6 +24,7 @@ import {
 import { apiClient } from "@/lib/api"
 import { AdminTableSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
+import EmptyState from "@/components/empty-state"
 
 const ITEMS_PER_PAGE = 15
 
@@ -193,8 +195,8 @@ export default function SuperAdminAttendancePage() {
               <TableBody>
                 {paginated.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      Tidak ada data
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <EmptyState icon={Users} title="Tidak ada data" description="Tidak ada data absensi yang ditemukan" />
                     </TableCell>
                   </TableRow>
                 ) : (

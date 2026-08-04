@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import {
@@ -20,6 +20,8 @@ import {
   Moon,
   Monitor,
   Calendar,
+  Camera,
+  Loader2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -27,10 +29,11 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
+import { uploadToR2 } from "@/lib/upload"
 import { ProfileSkeleton } from "@/components/skeletons"
 import { toast } from "sonner"
 
@@ -56,7 +59,7 @@ function getInitials(name: string): string {
 }
 
 function getPasswordStrength(password: string): { label: string; color: string; width: string } {
-  if (password.length === 0) return { label: "", color: "bg-gray-200", width: "w-0" }
+  if (password.length === 0)       return { label: "", color: "bg-muted", width: "w-0" }
   if (password.length < 4) return { label: "Lemah", color: "bg-red-500", width: "w-1/4" }
   if (password.length < 8) return { label: "Sedang", color: "bg-amber-500", width: "w-2/4" }
   if (/[A-Z]/.test(password) && /[0-9]/.test(password) && /[^a-zA-Z0-9]/.test(password)) {
@@ -78,13 +81,14 @@ interface UserProfile {
   role: string
   position: string
   department: string
-  joinDate: string
+  joinDate: string | null
+  createdAt: string
   image: string | null
   rewardPoints: number
 }
 
 export default function EmployeeProfilePage() {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending: sessionPending } = authClient.useSession()
   const [isEditing, setIsEditing] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -101,6 +105,8 @@ export default function EmployeeProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const [formValues, setFormValues] = useState({
     name: "",
@@ -113,8 +119,9 @@ export default function EmployeeProfilePage() {
   })
 
   useEffect(() => {
+    if (sessionPending) return
     const userId = session?.user?.id
-    if (!userId) return
+    if (!userId) { setLoading(false); return }
     let cancelled = false
     async function load() {
       try {
@@ -145,10 +152,27 @@ export default function EmployeeProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, sessionPending])
 
   const handleEdit = () => {
     setIsEditing(true)
+  }
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !profile) return
+    setAvatarUploading(true)
+    try {
+      const publicUrl = await uploadToR2(file, "avatars")
+      await apiClient.put("/api/employees", { id: profile.id, image: publicUrl })
+      setProfile({ ...profile, image: publicUrl })
+      toast.success("Foto profil berhasil diperbarui")
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal upload foto profil")
+    } finally {
+      setAvatarUploading(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ""
+    }
   }
 
   const handleSave = async () => {
@@ -215,7 +239,7 @@ export default function EmployeeProfilePage() {
 
   if (!profile) {
     return (
-      <div className="p-4 text-center text-gray-500">
+      <div className="text-center text-muted-foreground">
         Profil tidak ditemukan
       </div>
     )
@@ -230,9 +254,27 @@ export default function EmployeeProfilePage() {
 
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-6 sm:flex-row">
-          <Avatar size="lg">
-            <AvatarFallback className="text-lg">{getInitials(profile.name)}</AvatarFallback>
-          </Avatar>
+          <div className="relative shrink-0">
+            <Avatar size="lg">
+              <AvatarImage src={profile.image || undefined} alt={profile.name} />
+              <AvatarFallback className="text-lg">{getInitials(profile.name)}</AvatarFallback>
+            </Avatar>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+            >
+              {avatarUploading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+            </button>
+          </div>
           <div className="text-center sm:text-left">
             <h2 className="text-xl font-bold">{profile.name}</h2>
             <p className="text-muted-foreground">
@@ -242,7 +284,11 @@ export default function EmployeeProfilePage() {
               <Badge className={roleColors[profile.role]}>{roleLabels[profile.role]}</Badge>
               <Badge variant="secondary">
                 <Calendar className="size-3" />
-                Bergabung {format(new Date(profile.joinDate), "dd MMMM yyyy", { locale: id })}
+                Bergabung {profile.joinDate && new Date(profile.joinDate).getFullYear() > 1971
+                  ? format(new Date(profile.joinDate), "dd MMMM yyyy", { locale: id })
+                  : profile.createdAt
+                    ? format(new Date(profile.createdAt), "dd MMMM yyyy", { locale: id })
+                    : "—"}
               </Badge>
             </div>
           </div>
@@ -422,7 +468,7 @@ export default function EmployeeProfilePage() {
                 </div>
                 {newPassword.length > 0 && (
                   <div className="space-y-1">
-                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted dark:bg-muted">
                       <div className={`h-full rounded-full transition-all ${passwordStrength.color} ${passwordStrength.width}`} />
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -510,7 +556,7 @@ export default function EmployeeProfilePage() {
               </div>
               <div className="flex items-center justify-between py-4 border-b">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-warning/20 text-warning dark:bg-warning/20 dark:text-warning">
                     <CreditCard className="size-4" />
                   </div>
                   <div>

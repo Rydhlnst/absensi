@@ -8,6 +8,9 @@ import {
   Award,
   TrendingUp,
   ArrowLeft,
+  ClipboardList,
+  Users,
+  Gift,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
+import EmptyState from "@/components/empty-state"
 
 interface Attendance {
   id: string
@@ -151,18 +155,18 @@ export default function SuperAdminReportsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setDetailType(null)}
-            className="flex size-9 items-center justify-center rounded-xl border border-gray-200 bg-white hover:bg-gray-50"
+            className="flex size-9 items-center justify-center rounded-xl border border-border bg-white hover:bg-muted/50"
           >
             <ArrowLeft className="size-4" />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">
+            <h1 className="text-lg font-bold text-foreground">
               {detailType === "absensi" && "Laporan Absensi"}
               {detailType === "tugas" && "Laporan Tugas"}
               {detailType === "gaji" && "Laporan Gaji"}
               {detailType === "reward" && "Laporan Reward"}
             </h1>
-            <p className="text-xs text-gray-500">Detail laporan</p>
+            <p className="text-xs text-muted-foreground">Detail laporan</p>
           </div>
         </div>
 
@@ -237,16 +241,16 @@ function DetailContent({
           <StatCard label="Tidak Hadir" value={absent.length} color="red" />
           <StatCard label="Total Jam" value={`${Math.floor(totalMinutes / 60)}j ${totalMinutes % 60}m`} color="blue" />
         </div>
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
-          <div className="p-3 border-b border-gray-100">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Riwayat Absensi</h3>
+        <div className="rounded-2xl bg-card border border-border overflow-hidden">
+          <div className="p-3 border-b border-border/50">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Riwayat Absensi</h3>
           </div>
-          <div className="divide-y divide-gray-50 max-h-[50vh] overflow-y-auto">
+          <div className="divide-y divide-border/30 max-h-[50vh] overflow-y-auto">
             {attendance.slice(0, 30).map((a) => (
               <div key={a.id} className="px-4 py-3 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{a.date}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-sm font-medium text-foreground">{a.date}</p>
+                  <p className="text-xs text-muted-foreground">
                     {a.checkIn ? format(new Date(a.checkIn), "HH:mm") : "--:--"} - {a.checkOut ? format(new Date(a.checkOut), "HH:mm") : "--:--"}
                   </p>
                 </div>
@@ -255,7 +259,7 @@ function DetailContent({
                 </Badge>
               </div>
             ))}
-            {attendance.length === 0 && <p className="p-6 text-center text-sm text-gray-400">Tidak ada data</p>}
+            {attendance.length === 0 && <EmptyState icon={ClipboardList} title="Tidak ada data" description="Belum ada data absensi" />}
           </div>
         </div>
       </div>
@@ -275,23 +279,23 @@ function DetailContent({
           <StatCard label="Total Poin" value={totalPoints} color="blue" />
           <StatCard label="Total Tugas" value={tasks.length} color="gray" />
         </div>
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
-          <div className="p-3 border-b border-gray-100">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Daftar Tugas</h3>
+        <div className="rounded-2xl bg-card border border-border overflow-hidden">
+          <div className="p-3 border-b border-border/50">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Daftar Tugas</h3>
           </div>
-          <div className="divide-y divide-gray-50 max-h-[50vh] overflow-y-auto">
+          <div className="divide-y divide-border/30 max-h-[50vh] overflow-y-auto">
             {tasks.slice(0, 30).map((t) => (
               <div key={t.id} className="px-4 py-3 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{t.title}</p>
-                  <p className="text-xs text-gray-400">{t.workingDate}</p>
+                  <p className="text-sm font-medium text-foreground">{t.title}</p>
+                  <p className="text-xs text-muted-foreground">{t.workingDate}</p>
                 </div>
                 <Badge variant={t.status === "completed" ? "default" : "secondary"} className="text-[10px]">
                   {t.status === "completed" ? "Selesai" : t.status}
                 </Badge>
               </div>
             ))}
-            {tasks.length === 0 && <p className="p-6 text-center text-sm text-gray-400">Tidak ada data</p>}
+            {tasks.length === 0 && <EmptyState icon={ClipboardList} title="Tidak ada data" description="Belum ada data tugas" />}
           </div>
         </div>
       </div>
@@ -308,21 +312,21 @@ function DetailContent({
           <StatCard label="Karyawan Aktif" value={activeEmployees.length} color="green" />
           <StatCard label="Total Gaji/Bulan" value={`Rp ${totalSalary.toLocaleString("id-ID")}`} color="blue" />
         </div>
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
-          <div className="p-3 border-b border-gray-100">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Data Karyawan</h3>
+        <div className="rounded-2xl bg-card border border-border overflow-hidden">
+          <div className="p-3 border-b border-border/50">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Data Karyawan</h3>
           </div>
-          <div className="divide-y divide-gray-50 max-h-[50vh] overflow-y-auto">
+          <div className="divide-y divide-border/30 max-h-[50vh] overflow-y-auto">
             {activeEmployees.map((e) => (
               <div key={e.id} className="px-4 py-3 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{e.name}</p>
-                  <p className="text-xs text-gray-400">{e.position || "-"}</p>
+                  <p className="text-sm font-medium text-foreground">{e.name}</p>
+                  <p className="text-xs text-muted-foreground">{e.position || "-"}</p>
                 </div>
                 <p className="text-sm font-semibold text-green-600">Rp {(e.salary || 0).toLocaleString("id-ID")}</p>
               </div>
             ))}
-            {activeEmployees.length === 0 && <p className="p-6 text-center text-sm text-gray-400">Tidak ada data</p>}
+            {activeEmployees.length === 0 && <EmptyState icon={Users} title="Tidak ada data" description="Belum ada data karyawan" />}
           </div>
         </div>
       </div>
@@ -338,21 +342,21 @@ function DetailContent({
           <StatCard label="Total Transaksi" value={rewards.length} color="blue" />
           <StatCard label="Total Poin" value={totalPoints} color="green" />
         </div>
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
-          <div className="p-3 border-b border-gray-100">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Riwayat Reward</h3>
+        <div className="rounded-2xl bg-card border border-border overflow-hidden">
+          <div className="p-3 border-b border-border/50">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Riwayat Reward</h3>
           </div>
-          <div className="divide-y divide-gray-50 max-h-[50vh] overflow-y-auto">
+          <div className="divide-y divide-border/30 max-h-[50vh] overflow-y-auto">
             {rewards.slice(0, 30).map((r) => (
               <div key={r.id} className="px-4 py-3 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Poin: {r.points}</p>
-                  <p className="text-xs text-gray-400">{r.createdAt ? format(new Date(r.createdAt), "dd MMM yyyy", { locale: id }) : "-"}</p>
+                  <p className="text-sm font-medium text-foreground">Poin: {r.points}</p>
+                  <p className="text-xs text-muted-foreground">{r.createdAt ? format(new Date(r.createdAt), "dd MMM yyyy", { locale: id }) : "-"}</p>
                 </div>
                 <Badge variant="secondary" className="text-[10px]">+{r.points} poin</Badge>
               </div>
             ))}
-            {rewards.length === 0 && <p className="p-6 text-center text-sm text-gray-400">Tidak ada data</p>}
+            {rewards.length === 0 && <EmptyState icon={Gift} title="Tidak ada data" description="Belum ada data reward" />}
           </div>
         </div>
       </div>
@@ -368,7 +372,7 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
     yellow: "bg-yellow-50 border-yellow-100 text-yellow-700",
     red: "bg-red-50 border-red-100 text-red-700",
     blue: "bg-blue-50 border-blue-100 text-blue-700",
-    gray: "bg-gray-50 border-gray-100 text-gray-700",
+    gray: "bg-muted/50 border-border text-foreground",
   }
   return (
     <div className={`rounded-xl border p-3 ${colorMap[color] || colorMap.gray}`}>

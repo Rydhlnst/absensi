@@ -13,7 +13,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -103,6 +102,17 @@ function TimeSimulationBar() {
   )
 }
 
+const employeePageTitles: Record<string, string> = {
+  dashboard: "BERANDA",
+  tasks: "TUGAS",
+  "attendance-history": "RIWAYAT",
+  rewards: "HADIAH",
+  attendance: "ABSENSI",
+  leave: "CUTI",
+  profile: "PROFIL",
+  "task-history": "RIWAYAT TUGAS",
+}
+
 const adminPageTitles: Record<string, string> = {
   dashboard: "DASHBOARD",
   attendance: "MONITORING ABSENSI",
@@ -116,9 +126,12 @@ const adminPageTitles: Record<string, string> = {
   logs: "LOG SISTEM",
 }
 
-function getPageTitle(pathname: string): string {
+function getPageTitle(pathname: string, role: Role): string {
   const parts = pathname.split("/").filter(Boolean)
   const lastSegment = parts[parts.length - 1] || "dashboard"
+  if (role === "employee") {
+    return employeePageTitles[lastSegment] || "BERANDA"
+  }
   return adminPageTitles[lastSegment] || "DASHBOARD"
 }
 
@@ -185,133 +198,139 @@ export default function DashboardLayout({
     router.push("/login")
   }
 
-  const isEmployee = role === "employee"
-  const pageTitle = getPageTitle(pathname)
+  const pageTitle = getPageTitle(pathname, role)
   const roleName = role === "super_admin" ? "Super Admin" : role === "admin" ? "Admin" : user.position
 
-  // ─── EMPLOYEE LAYOUT ───────────────────────────────────────────────────────
-  if (isEmployee) {
-    return (
-      <TooltipProvider>
-        <div className="flex flex-col min-h-screen bg-background">
-          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-card px-4 shrink-0 shadow-sm">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="flex items-center gap-3 min-w-0 flex-1">
-                  <Avatar size="lg">
-                    <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="font-bold text-sm text-foreground leading-tight">
-                      Halo, {user.name.split(" ")[0].toUpperCase()}
-                    </p>
-                    <p className="text-xs text-muted-foreground leading-tight">
-                      {format(new Date(), "EEEE, dd MMMM yyyy", { locale: id })}
-                    </p>
-                  </div>
-                  <span className="flex items-center gap-1 rounded-full bg-warning/30 px-3 py-1 text-xs font-semibold text-warning-foreground border border-warning/30">
-                    <Clock className="size-3" />
-                    Jam Admin: <LiveClock />
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">{user.name}</span>
-                    <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
-                  <LogOut className="size-4" />
-                  <span>Keluar</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9 shrink-0 text-muted-foreground"
-              onClick={() => window.location.reload()}
-            >
-              <RotateCw className="size-4" />
-            </Button>
-          </header>
-
-          <main className="flex-1 overflow-x-hidden overflow-y-auto pb-20">
-            {children}
-          </main>
-
-          <MobileNav role={role} />
-        </div>
-        <Toaster position="top-right" richColors />
-      </TooltipProvider>
-    )
-  }
-
-  // ─── ADMIN / SUPER ADMIN LAYOUT ────────────────────────────────────────────
   return (
     <TooltipProvider>
       <SidebarProvider defaultOpen={false}>
         <AppSidebar role={role} user={user} />
 
         <div className="flex flex-col flex-1 min-h-screen w-0">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-4 shrink-0 shadow-sm">
-            <SidebarTrigger className="shrink-0 text-primary" />
-            <span className="flex-1 font-bold text-primary tracking-wide text-base">
-              {pageTitle}
-            </span>
-            <Button variant="ghost" size="icon" className="size-9 relative shrink-0">
-              <Bell className="size-5 text-muted-foreground" />
-              <Badge className="absolute -top-1 -right-1 size-4 p-0 text-[10px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground border-0">
-                3
-              </Badge>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2 h-9 px-2">
-                  <Avatar size="sm">
-                    <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="hidden md:flex flex-col items-start">
-                    <span className="text-sm font-medium leading-none">{user.name}</span>
-                    <span className="text-xs text-muted-foreground leading-none mt-1">{roleName}</span>
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">{user.name}</span>
-                    <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <UserIcon className="size-4" />
-                  <span>Profil</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="size-4" />
-                  <span>Pengaturan</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
-                  <LogOut className="size-4" />
-                  <span>Keluar</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {/* ─── HEADER ─────────────────────────────────────────────── */}
+          <header className="sticky top-0 z-30 flex h-[62px] sm:h-[68px] items-center gap-3 border-b bg-card px-4 shrink-0 shadow-sm">
+            {/* Mobile: employee greeting / desktop: sidebar trigger + page title */}
+            <div className="flex items-center gap-3 min-w-0 md:flex-1">
+              {/* SidebarTrigger — desktop only */}
+              <SidebarTrigger className="hidden md:flex shrink-0 text-primary" />
+
+              {/* Mobile: greeting with avatar */}
+              <div className="flex items-center gap-3 min-w-0 flex-1 md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" className="flex items-center gap-3 min-w-0 flex-1">
+                      <Avatar size="lg">
+                        <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="font-bold text-sm text-foreground leading-tight">
+                          Halo, {user.name.split(" ")[0].toUpperCase()}
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-tight">
+                          {format(new Date(), "EEEE, dd MMMM yyyy", { locale: id })}
+                        </p>
+                      </div>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium">{user.name}</span>
+                        <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
+                      <LogOut className="size-4" />
+                      <span>Keluar</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Desktop: page title */}
+              <span className="hidden md:block flex-1 font-bold text-primary tracking-wide text-base">
+                {pageTitle}
+              </span>
+            </div>
+
+            {/* Right side actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Mobile: refresh + clock */}
+              <span className="flex md:hidden items-center gap-1 rounded-full bg-warning/30 px-3 py-1 text-xs font-semibold text-warning-foreground border border-warning/30">
+                <Clock className="size-3" />
+                <LiveClock />
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 shrink-0 text-muted-foreground md:hidden"
+                onClick={() => window.location.reload()}
+              >
+                <RotateCw className="size-4" />
+              </Button>
+
+              {/* Desktop: bell + avatar dropdown */}
+              <Button variant="ghost" size="icon" className="size-9 relative shrink-0 hidden md:flex">
+                <Bell className="size-5 text-muted-foreground" />
+                <Badge className="absolute -top-1 -right-1 size-4 p-0 text-[10px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground border-0">
+                  3
+                </Badge>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2 h-9 px-2">
+                    <Avatar size="sm">
+                      <AvatarImage src={user.avatar || getAvatarUrl(user.name)} alt={user.name} />
+                      <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="hidden lg:flex flex-col items-start">
+                      <span className="text-sm font-medium leading-none">{user.name}</span>
+                      <span className="text-xs text-muted-foreground leading-none mt-1">{roleName}</span>
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium">{user.name}</span>
+                      <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <UserIcon className="size-4" />
+                    <span>Profil</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Settings className="size-4" />
+                    <span>Pengaturan</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
+                    <LogOut className="size-4" />
+                    <span>Keluar</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </header>
 
-          <TimeSimulationBar />
+          {/* ─── TIME SIMULATION (admin/super-admin only) ─────────── */}
+          {role !== "employee" && <TimeSimulationBar />}
 
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4">
-            {children}
+          {/* ─── MAIN CONTENT ───────────────────────────────────────── */}
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background">
+            <div className="mx-auto w-full max-w-5xl p-4 sm:p-6">
+              {children}
+            </div>
           </main>
+        </div>
+
+        {/* ─── MOBILE BOTTOM NAV (hidden on md+) ────────────────── */}
+        <div className="md:hidden">
+          <MobileNav role={role} />
         </div>
       </SidebarProvider>
       <Toaster position="top-right" richColors />

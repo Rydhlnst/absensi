@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useTransition } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { format } from "date-fns"
 import {
   Clock,
@@ -8,6 +8,7 @@ import {
   XCircle,
   CheckCircle,
   AlertTriangle,
+  ClipboardCheck,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -31,10 +32,11 @@ import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
 import type { TaskCategory, TaskStatus } from "@/types"
+import EmptyState from "@/components/empty-state"
 
 const categoryColor: Record<TaskCategory, string> = {
   installation: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  maintenance: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  maintenance: "bg-warning/10 text-warning border-warning/20",
   billing: "bg-purple-500/10 text-purple-600 border-purple-500/20",
   repair: "bg-red-500/10 text-red-600 border-red-500/20",
   inspection: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
@@ -45,7 +47,7 @@ const statusColor: Record<TaskStatus, string> = {
   in_progress: "bg-blue-500/10 text-blue-600 border-blue-500/20",
   completed: "bg-green-500/10 text-green-600 border-green-500/20",
   cancelled: "bg-red-500/10 text-red-600 border-red-500/20",
-  on_hold: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+  on_hold: "bg-muted/10 text-muted-foreground border-muted-foreground/20",
 }
 
 const categoryLabel: Record<TaskCategory, string> = {
@@ -122,7 +124,7 @@ function formatHours(minutes: number): string {
 }
 
 export default function TaskHistoryPage() {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending: sessionPending } = authClient.useSession()
   const [filterMode, setFilterMode] = useState<"day" | "month" | "year" | "range">("month")
   const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1))
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()))
@@ -132,20 +134,18 @@ export default function TaskHistoryPage() {
   const [tasks, setTasks] = useState<TaskRecord[]>([])
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [, startTransition] = useTransition()
 
   const currentEmployeeId = session?.user?.id || ""
   const now = new Date()
   const todayStr = format(now, "yyyy-MM-dd")
 
   useEffect(() => {
-    if (!currentEmployeeId) return
+    if (sessionPending) return
+    if (!currentEmployeeId) { setLoading(false); return }
     let cancelled = false
-    startTransition(() => {
-      setLoading(true)
-    })
     async function load() {
       try {
+        setLoading(true)
         const [t, a] = await Promise.all([
           apiClient.get<TaskRecord[]>("/api/tasks", { assignedTo: currentEmployeeId }),
           apiClient.get<AttendanceRecord[]>("/api/attendance", { employeeId: currentEmployeeId }),
@@ -161,9 +161,9 @@ export default function TaskHistoryPage() {
         if (!cancelled) setLoading(false)
       }
     }
-    void load()
+    load()
     return () => { cancelled = true }
-  }, [currentEmployeeId, startTransition])
+  }, [currentEmployeeId, sessionPending])
 
   const dateRange = useMemo(() => {
     const y = parseInt(selectedYear)
@@ -354,7 +354,7 @@ export default function TaskHistoryPage() {
         <Card>
           <CardContent className="space-y-1">
             <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-warning/20 text-warning dark:bg-warning/20 dark:text-warning">
                 <Clock className="size-4" />
               </div>
               <span className="text-xs text-muted-foreground">Total Waktu Kerja</span>
@@ -417,11 +417,8 @@ export default function TaskHistoryPage() {
               <TableBody>
                 {myTasks.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center text-muted-foreground py-8"
-                    >
-                      Tidak ada data tugas
+                    <TableCell colSpan={6} className="p-0">
+                      <EmptyState icon={ClipboardCheck} title="Tidak ada data tugas" description="Belum ada riwayat tugas untuk periode ini" />
                     </TableCell>
                   </TableRow>
                 ) : (

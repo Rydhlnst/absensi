@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useTheme } from "next-themes"
 import { format } from "date-fns"
 import { id } from "date-fns/locale/id"
@@ -12,6 +12,7 @@ import {
   LogOut,
   User,
   Settings,
+  CheckCheck,
   ChevronDown,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -30,7 +31,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { authClient } from "@/lib/auth-client"
+import { apiClient } from "@/lib/api"
 import type { User as UserType } from "@/types"
+
+interface Notification {
+  id: string
+  title: string
+  message: string | null
+  type: string | null
+  isRead: boolean
+  createdAt: string
+  link: string | null
+}
 
 interface HeaderProps {
   user: UserType
@@ -41,6 +53,47 @@ export default function Header({ user }: HeaderProps) {
   const router = useRouter()
   const [currentTime, setCurrentTime] = useState(new Date())
   const [mounted, setMounted] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifLoading, setNotifLoading] = useState(false)
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setNotifLoading(true)
+      const data = await apiClient.get<Notification[]>("/api/notifications", {
+        userId: user.id,
+      })
+      setNotifications(data)
+    } catch {
+      // silent
+    } finally {
+      setNotifLoading(false)
+    }
+  }, [user.id])
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length
+
+  const markAsRead = async (notifId: string) => {
+    try {
+      await apiClient.put("/api/notifications", { id: notifId, isRead: true })
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, isRead: true } : n))
+      )
+    } catch {
+      // silent
+    }
+  }
+
+  const markAllRead = async () => {
+    try {
+      await apiClient.put("/api/notifications", {
+        markAllRead: true,
+        userId: user.id,
+      })
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+    } catch {
+      // silent
+    }
+  }
 
   const handleLogout = async () => {
     await authClient.signOut({
@@ -53,13 +106,16 @@ export default function Header({ user }: HeaderProps) {
   }
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => setMounted(true))
+    const rafId = requestAnimationFrame(() => setMounted(true))
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    fetchNotifications()
+    const notifTimer = setInterval(fetchNotifications, 30000)
     return () => {
-      cancelAnimationFrame(id)
+      cancelAnimationFrame(rafId)
       clearInterval(timer)
+      clearInterval(notifTimer)
     }
-  }, [])
+  }, [fetchNotifications])
 
   const formattedDate = format(currentTime, "EEEE, d MMMM yyyy", { locale: id })
   const formattedTime = format(currentTime, "HH:mm:ss")
@@ -100,46 +156,59 @@ export default function Header({ user }: HeaderProps) {
           {mounted && theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
 
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={(open) => { if (open) fetchNotifications() }}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative size-9">
               <Bell className="size-4" />
-              <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 size-4 p-0 flex items-center justify-center text-[9px] rounded-full">5</Badge>
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 size-4 p-0 flex items-center justify-center text-[9px] rounded-full">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
             <DropdownMenuLabel className="flex items-center justify-between">
               <span>Notifikasi</span>
-              <Badge variant="secondary" className="text-[10px]">5 baru</Badge>
+              {unreadCount > 0 && (
+                <Badge variant="secondary" className="text-[10px]">{unreadCount} baru</Badge>
+              )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup className="max-h-80 overflow-y-auto">
-              <DropdownMenuItem>
-                <div className="flex flex-col gap-1 w-full">
-                  <span className="text-sm font-medium">Tugas Baru Ditugaskan</span>
-                  <span className="text-xs text-muted-foreground line-clamp-1">Anda ditugaskan untuk pemasangan Router WiFi</span>
-                  <span className="text-[10px] text-muted-foreground">2 jam lalu</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col gap-1 w-full">
-                  <span className="text-sm font-medium">Tugas Urgent</span>
-                  <span className="text-xs text-muted-foreground line-clamp-1">Perbaikan AC central membutuhkan penanganan segera</span>
-                  <span className="text-[10px] text-muted-foreground">3 jam lalu</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col gap-1 w-full">
-                  <span className="text-sm font-medium">Poin Reward Bertambah</span>
-                  <span className="text-xs text-muted-foreground line-clamp-1">Anda mendapat 65 poin untuk pengecekan firewall</span>
-                  <span className="text-[10px] text-muted-foreground">1 hari lalu</span>
-                </div>
-              </DropdownMenuItem>
+              {notifLoading && notifications.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">Memuat...</div>
+              ) : notifications.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">Belum ada notifikasi</div>
+              ) : (
+                notifications.slice(0, 20).map((notif) => (
+                  <DropdownMenuItem
+                    key={notif.id}
+                    className={`cursor-pointer ${!notif.isRead ? "bg-primary/5" : ""}`}
+                    onClick={() => markAsRead(notif.id)}
+                  >
+                    <div className="flex flex-col gap-1 w-full">
+                      <span className="text-sm font-medium">{notif.title}</span>
+                      {notif.message && (
+                        <span className="text-xs text-muted-foreground line-clamp-1">{notif.message}</span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(new Date(notif.createdAt), "dd MMM yyyy, HH:mm", { locale: id })}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              )}
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-xs text-primary">
-              Lihat semua notifikasi
-            </DropdownMenuItem>
+            {unreadCount > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="justify-center text-xs text-primary cursor-pointer" onClick={markAllRead}>
+                  <CheckCheck className="size-3.5 mr-1" />
+                  Tandai semua sudah dibaca
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 

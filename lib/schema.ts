@@ -107,6 +107,8 @@ export const attendance = pgTable("attendance", {
   isLate: boolean("isLate").default(false),
   lateMinutes: integer("lateMinutes").default(0),
   notes: text("notes"),
+  isFrozen: boolean("isFrozen").default(false),
+  frozenMinutes: integer("frozenMinutes").default(0),
 });
 
 export const reward = pgTable("reward", {
