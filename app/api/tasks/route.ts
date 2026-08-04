@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { task, reward, user, timelineEvent, notification } from "@/lib/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { logSystemEvent } from "@/lib/log";
 
 export async function GET(request: NextRequest) {
   try {
@@ -86,6 +87,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // System log
+    await logSystemEvent({
+      userId: body.assignedBy,
+      type: "task_create",
+      detail: `Tugas baru dibuat: ${body.title} (Kategori: ${body.category})`,
+    });
+
     return NextResponse.json(newTask[0], { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
@@ -161,6 +169,13 @@ export async function PUT(request: NextRequest) {
         isRead: false,
         createdAt: new Date(),
         link: "/employee/rewards",
+      });
+
+      // System log
+      await logSystemEvent({
+        userId: updatedTask.assignedTo,
+        type: "task_complete",
+        detail: `Tugas selesai: ${updatedTask.title} (+${updatedTask.rewardPoints} poin)`,
       });
     }
 

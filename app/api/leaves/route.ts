@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { leave, user, notification } from "@/lib/schema";
 import { eq, desc, and } from "drizzle-orm";
+import { logSystemEvent } from "@/lib/log";
 
 export async function GET(request: NextRequest) {
   try {
@@ -117,6 +118,12 @@ export async function PUT(request: NextRequest) {
         isRead: false,
         createdAt: new Date(),
         link: "/employee/attendance",
+      });
+
+      // System log
+      await logSystemEvent({
+        type: `leave_${status}`,
+        detail: `Cuti ${status === "approved" ? "disetujui" : "ditolak"} (ID: ${leaveRecord.id})${rejectionReason ? ` - Alasan: ${rejectionReason}` : ""}`,
       });
     }
 

@@ -39,9 +39,27 @@ export async function POST(request: NextRequest) {
     let isFrozen = false;
     let frozenMinutes = 0;
 
+    // Server-side late detection
+    let isLate = body.isLate || false;
+    let lateMinutes = body.lateMinutes || 0;
+
     try {
       const settings = await db.select().from(companySetting).limit(1);
       const freezeEnabled = settings[0]?.taskSalaryFreeze;
+
+      // Calculate late status server-side
+      if (settings[0]?.workingStart && body.checkIn) {
+        const workStart = settings[0].workingStart;
+        const tolerance = settings[0].lateTolerance || 0;
+        const [startHour, startMin] = workStart.split(":").map(Number);
+        const checkInDate = new Date(body.checkIn);
+        const checkInMinutes = checkInDate.getHours() * 60 + checkInDate.getMinutes();
+        const workStartMinutes = startHour * 60 + startMin;
+        if (checkInMinutes > workStartMinutes + tolerance) {
+          isLate = true;
+          lateMinutes = checkInMinutes - workStartMinutes;
+        }
+      }
 
       if (freezeEnabled) {
         // Check if employee has pending/in-progress tasks

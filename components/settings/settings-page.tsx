@@ -656,10 +656,6 @@ export default function SettingsPage({ role }: SettingsPageProps) {
           <label className={labelClass}>Toleransi Keterlambatan Jam Masuk (Menit)</label>
           <input type="number" value={toleranceIn} onChange={(e) => canEdit && setToleranceIn(e.target.value)} className={fieldClass} readOnly={!canEdit} />
         </div>
-        <div>
-          <label className={labelClass}>Toleransi Keterlambatan Selesai Istirahat (Menit)</label>
-          <input type="number" value={toleranceBreak} onChange={(e) => canEdit && setToleranceBreak(e.target.value)} className={fieldClass} readOnly={!canEdit} />
-        </div>
       </div>
 
       {/* Security & Salary Controls */}

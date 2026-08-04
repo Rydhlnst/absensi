@@ -21,6 +21,7 @@ export const user = pgTable("user", {
   address: text("address"),
   bankName: text("bankName"),
   bankAccount: text("bankAccount"),
+  npwp: text("npwp"),
 });
 
 export const session = pgTable("session", {

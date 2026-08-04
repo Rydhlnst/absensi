@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { MapPin, Pencil, Eye, Trash2, Loader2, Plus, Phone, Home, FileText, Map, ClipboardList } from "lucide-react"
 import EmptyState from "@/components/empty-state"
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -99,6 +100,7 @@ function TaskCard({
   onEdit: (t: Task) => void
   onDelete: (t: Task) => void
 }) {
+  const router = useRouter()
   const mapsUrl = `https://www.google.com/maps?q=${task.latitude},${task.longitude}`
   const catColor = categoryColors[task.category]
   const phoneNumber = formatPhone(task.customerPhone || "")
@@ -188,7 +190,7 @@ function TaskCard({
 
       <div className="grid grid-cols-3 border-t border-border">
         <button
-          onClick={() => toast.info(`Detail: ${task.title}`)}
+          onClick={() => router.push(`/employee/tasks/${task.id}`)}
           className="flex items-center justify-center gap-1.5 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/50 border-r border-border"
         >
           <Eye className="size-4" />
@@ -224,6 +226,7 @@ export default function AdminTasksPage() {
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null)
   const [form, setForm] = useState<TaskForm>(defaultForm)
   const [saving, setSaving] = useState(false)
+  const [categoryPoints, setCategoryPoints] = useState<Record<string, number>>({})
 
   const fetchData = async () => {
     try {
@@ -246,13 +249,21 @@ export default function AdminTasksPage() {
     async function load() {
       try {
         setLoading(true)
-        const [tasks, emps] = await Promise.all([
+        const [tasks, emps, settings] = await Promise.all([
           apiClient.get<Task[]>("/api/tasks"),
           apiClient.get<EmployeeLite[]>("/api/employees", { role: "employee" }),
+          apiClient.get<{ installationPoints?: number; repairPoints?: number; billingPoints?: number; maintenancePoints?: number; inspectionPoints?: number }>("/api/settings"),
         ])
         if (!cancelled) {
           setTaskList(tasks)
           setEmployees(emps)
+          setCategoryPoints({
+            installation: settings.installationPoints || 100,
+            repair: settings.repairPoints || 50,
+            billing: settings.billingPoints || 20,
+            maintenance: settings.maintenancePoints || 50,
+            inspection: settings.inspectionPoints || 30,
+          })
         }
       } catch (e: unknown) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Gagal memuat data")
@@ -423,7 +434,14 @@ export default function AdminTasksPage() {
               <Label className="text-xs">Kategori</Label>
               <select
                 value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as TaskCategory }))}
+                onChange={(e) => {
+                  const cat = e.target.value as TaskCategory
+                  setForm((f) => ({
+                    ...f,
+                    category: cat,
+                    rewardPoints: editingTask ? f.rewardPoints : String(categoryPoints[cat] || 0),
+                  }))
+                }}
                 className="w-full mt-1 rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {Object.entries(categoryLabels).map(([k, v]) => (

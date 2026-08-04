@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useRef } from "react"
-import { Plus, Search, TrendingUp, ListChecks, Gift, Trash2, Pencil, Loader2, Upload } from "lucide-react"
+import { Plus, Search, TrendingUp, ListChecks, Gift, Trash2, Pencil, Loader2, Upload, Coins } from "lucide-react"
 import EmptyState from "@/components/empty-state"
 import { apiClient } from "@/lib/api"
 import { uploadToR2 } from "@/lib/upload"
@@ -99,6 +99,11 @@ export default function AdminRewardsPage() {
   const [imageUploading, setImageUploading] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
 
+  const [adjustOpen, setAdjustOpen] = useState(false)
+  const [adjustPoints, setAdjustPoints] = useState("")
+  const [adjustDesc, setAdjustDesc] = useState("")
+  const [adjusting, setAdjusting] = useState(false)
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -151,6 +156,38 @@ export default function AdminRewardsPage() {
       setRewardItems((prev) => prev.filter((i) => i.id !== id))
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Gagal menghapus hadiah")
+    }
+  }
+
+  const handleAdjustPoints = async () => {
+    if (!selectedEmpId) return
+    const pts = parseInt(adjustPoints)
+    if (!pts || pts === 0) { toast.error("Poin harus diisi dan tidak boleh 0"); return }
+    if (!adjustDesc.trim()) { toast.error("Deskripsi wajib diisi"); return }
+
+    setAdjusting(true)
+    try {
+      await apiClient.post("/api/rewards", {
+        employeeId: selectedEmpId,
+        points: pts,
+        type: "adjusted",
+        description: adjustDesc.trim(),
+      })
+      toast.success(`Poin ${pts > 0 ? "ditambahkan" : "dikurangi"} ${Math.abs(pts)} dari ${selectedEmp?.name}`)
+      setAdjustOpen(false)
+      setAdjustPoints("")
+      setAdjustDesc("")
+      // Refresh data
+      const [emps, rwd] = await Promise.all([
+        apiClient.get<Employee[]>("/api/employees"),
+        apiClient.get<RewardEntry[]>("/api/rewards"),
+      ])
+      setEmployees(emps)
+      setRewards(rwd)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Gagal menyesuaikan poin")
+    } finally {
+      setAdjusting(false)
     }
   }
 
@@ -367,10 +404,17 @@ export default function AdminRewardsPage() {
                     {getInitials(selectedEmp.name)}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-foreground">{selectedEmp.name}</p>
                   <p className="text-xs text-muted-foreground">Total Poin: <span className="font-bold text-primary">{selectedEmp.rewardPoints} Poin</span></p>
                 </div>
+                <button
+                  onClick={() => { setAdjustPoints(""); setAdjustDesc(""); setAdjustOpen(true) }}
+                  className="flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 shrink-0"
+                >
+                  <Coins className="size-3.5" />
+                  Adjust
+                </button>
               </div>
             )}
 
@@ -503,6 +547,43 @@ export default function AdminRewardsPage() {
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : null}
               {saving ? "Menyimpan..." : editingItem ? "Simpan Perubahan" : "Tambah Hadiah"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adjust Poin Karyawan</DialogTitle>
+            <DialogDescription>{selectedEmp?.name} — Saat ini: {selectedEmp?.rewardPoints} poin</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Jumlah Poin <span className="text-destructive">*</span></Label>
+              <Input
+                type="number"
+                placeholder="Masukkan angka (+ untuk tambah, - untuk kurangi)"
+                value={adjustPoints}
+                onChange={(e) => setAdjustPoints(e.target.value)}
+              />
+              <p className="text-[10px] text-muted-foreground">Gunakan angka positif untuk menambah, negatif untuk mengurangi</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Alasan <span className="text-destructive">*</span></Label>
+              <Textarea
+                placeholder="Alasan penyesuaian poin..."
+                value={adjustDesc}
+                onChange={(e) => setAdjustDesc(e.target.value)}
+                className="min-h-16"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdjustOpen(false)} disabled={adjusting}>Batal</Button>
+            <Button onClick={handleAdjustPoints} disabled={adjusting}>
+              {adjusting ? <Loader2 className="size-4 animate-spin" /> : <Coins className="size-4" />}
+              {adjusting ? "Menyimpan..." : "Simpan"}
             </Button>
           </DialogFooter>
         </DialogContent>

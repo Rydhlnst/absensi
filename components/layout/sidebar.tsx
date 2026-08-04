@@ -79,6 +79,7 @@ function getMenusByRole(role: Role): MenuItem[] {
         { title: "Riwayat", url: "/employee/attendance-history", icon: BarChart2 },
         { title: "Cuti", url: "/employee/leave", icon: CalendarOff },
         { title: "Riwayat Tugas", url: "/employee/task-history", icon: History },
+        { title: "Profil", url: "/employee/profile", icon: Users },
         { title: "Hadiah", url: "/employee/rewards", icon: Gift },
       ]
     default:

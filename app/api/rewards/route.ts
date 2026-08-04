@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    if (body.points > 0) {
+    // Update employee reward points (positive = add, negative = subtract)
+    if (body.points !== 0) {
       await db
         .update(user)
         .set({
