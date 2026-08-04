@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { attendance, task, companySetting, officeBranch } from "@/lib/schema";
+import { attendance, task, companySetting, officeBranch, device } from "@/lib/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { checkBranchProximity } from "@/lib/geo";
 
@@ -46,6 +46,29 @@ export async function POST(request: NextRequest) {
     try {
       const settings = await db.select().from(companySetting).limit(1);
       const freezeEnabled = settings[0]?.taskSalaryFreeze;
+      const deviceBindingEnabled = settings[0]?.deviceBinding;
+
+      // Device binding enforcement
+      if (deviceBindingEnabled && body.deviceId && body.employeeId) {
+        const boundDevice = await db
+          .select()
+          .from(device)
+          .where(
+            and(
+              eq(device.userId, body.employeeId),
+              eq(device.deviceId, body.deviceId),
+              eq(device.isActive, true)
+            )
+          )
+          .limit(1);
+
+        if (boundDevice.length === 0) {
+          return NextResponse.json(
+            { error: "Perangkat ini belum terdaftar. Silakan login dari perangkat yang sudah terikat." },
+            { status: 403 }
+          );
+        }
+      }
 
       // Calculate late status server-side
       if (settings[0]?.workingStart && body.checkIn) {

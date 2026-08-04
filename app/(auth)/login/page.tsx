@@ -84,6 +84,7 @@ export default function LoginPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId, deviceId, deviceName, platform }),
         })
+        localStorage.setItem("deviceId", deviceId)
       } catch {
         // Device binding is non-blocking
       }

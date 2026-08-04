@@ -207,6 +207,7 @@ export default function AttendancePage() {
             ? JSON.stringify({ latitude: settings.latitude, longitude: settings.longitude })
             : null,
         checkInPhoto: photoUrl,
+        deviceId: localStorage.getItem("deviceId") || null,
         status: "present",
         isLate: false,
         lateMinutes: 0,
@@ -260,6 +261,7 @@ export default function AttendancePage() {
         checkOut: new Date().toISOString(),
         checkOutPhoto: photoUrl,
         checkOutLocation: userLocation ? JSON.stringify(userLocation) : null,
+        deviceId: localStorage.getItem("deviceId") || null,
       })
       toast.success("Check out berhasil!")
       await fetchData()
